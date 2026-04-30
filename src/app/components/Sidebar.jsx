@@ -6,41 +6,35 @@ import {
   Wallet, 
   Calculator, 
   BookOpen, 
-  FileSignature 
+  FileSignature,
+  FileSpreadsheet
 } from 'lucide-react';
 
-interface SidebarProps {
-  activeMenu: string;
-  onMenuChange: (menu: string) => void;
-  role: 'admin' | 'clerk';
-}
-
-export function Sidebar({ activeMenu, onMenuChange, role }: SidebarProps) {
-  const language = 'ar';
+export function Sidebar({ activeMenu, onMenuChange, role }) {
   const menuItems = [
-    { id: 'bureau', icon: LayoutDashboard, labelAr: 'لوحة القيادة', labelFr: "Tableau de bord", adminOnly: true },
-    { id: 'production', icon: ClipboardList, labelAr: 'بطائق الإنتاج', labelFr: 'Cartes de Production' },
-    { id: 'notification', icon: Bell, labelAr: 'تبليغ المقررات', labelFr: 'Notification des Jugements' },
-    { id: 'recouvrement', icon: Wallet, labelAr: 'التحصيل', labelFr: 'Recouvrement' },
-    { id: 'frais', icon: Calculator, labelAr: 'تصفية الصوائر', labelFr: 'Liquidation des Dépens' },
-    { id: 'extraits', icon: BookOpen, labelAr: 'سجل المستخرجات', labelFr: 'Registre des Extraits' },
-    { id: 'documents', icon: FileSignature, labelAr: 'توليد الوثائق', labelFr: 'Générateur de Documents' },
+    { id: 'bureau', icon: LayoutDashboard, label: 'لوحة القيادة', adminOnly: true },
+    { id: 'production', icon: ClipboardList, label: 'بطائق الإنتاج' },
+    { id: 'directed', icon: FileSpreadsheet, label: 'إجراء يوجه' },
+    { id: 'outstanding', icon: BookOpen, label: 'الباقي بدون تحصيل' },
+    { id: 'notification', icon: Bell, label: 'تبليغ المقررات' },
+    { id: 'recouvrement', icon: Wallet, label: 'التحصيل' },
+    { id: 'frais', icon: Calculator, label: 'تصفية الصوائر' },
+    { id: 'extraits', icon: BookOpen, label: 'سجل المستخرجات' },
+    { id: 'documents', icon: FileSignature, label: 'توليد الوثائق' },
   ];
 
-  const label = language === 'ar' ? 'labelAr' : 'labelFr';
-
   return (
-    <aside className={`w-72 bg-[#003366] text-white flex flex-col ${language === 'ar' ? 'border-l' : 'border-r'} border-[#004080]`}>
+    <aside className="w-72 bg-[#003366] text-white flex flex-col border-l border-[#004080]">
       {/* Logo */}
       <div className="p-6 border-b border-[#004080]">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-gradient-to-br from-[#D4AF37] to-[#C5A028] rounded-lg flex items-center justify-center shrink-0 shadow-lg">
-            <span className="text-[#003366] font-bold text-xl">AT</span>
+            <span className="text-[#003366] font-bold text-xl">ET</span>
           </div>
-          <div className={language === 'ar' ? 'text-right overflow-hidden' : 'text-left overflow-hidden'}>
-            <h1 className="font-bold text-lg truncate">Adl-Tahssil</h1>
+          <div className="text-right overflow-hidden">
+            <h1 className="font-bold text-lg truncate">E-Tahssil</h1>
             <p className="text-xs text-[#D4AF37] truncate font-medium">
-              {language === 'ar' ? 'نظام العدل والتحصيل' : 'E-Justice Adl-Tahssil'}
+              شعبة التبليغ والتحصيل
             </p>
           </div>
         </div>
@@ -50,6 +44,7 @@ export function Sidebar({ activeMenu, onMenuChange, role }: SidebarProps) {
       <nav className="flex-1 p-4 overflow-y-auto">
         <ul className="space-y-2">
           {menuItems.map((item) => {
+            // Cacher les éléments réservés à l'admin si l'utilisateur est un clerk (كاتب)
             if (item.adminOnly && role !== 'admin') return null;
             
             const isActive = activeMenu === item.id;
@@ -67,8 +62,8 @@ export function Sidebar({ activeMenu, onMenuChange, role }: SidebarProps) {
                   <div className={`p-2 rounded-lg transition-colors ${isActive ? 'bg-[#D4AF37]/20' : 'bg-transparent'}`}>
                     <item.icon className={`w-5 h-5 ${isActive ? 'text-[#D4AF37]' : 'text-gray-400'}`} />
                   </div>
-                  <span className={`text-sm ${language === 'ar' ? 'text-right' : 'text-left'} flex-1`}>
-                    {item[label]}
+                  <span className="text-sm text-right flex-1">
+                    {item.label}
                   </span>
                   {isActive && (
                     <div className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]"></div>
@@ -83,7 +78,7 @@ export function Sidebar({ activeMenu, onMenuChange, role }: SidebarProps) {
       {/* Footer */}
       <div className="p-4 border-t border-[#004080]">
         <div className="text-xs text-gray-400 text-center font-medium">
-          © 2026 Adl-Tahssil
+          © 2026  جميع الحقوق محفوظة
         </div>
       </div>
     </aside>
