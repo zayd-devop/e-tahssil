@@ -389,7 +389,7 @@ export function DirectedProcedureModule() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `إشعار بدون صائر التنفيذ-${printData.documentType} - ${printData.fileNumber.replace(/\//g, '-')}.doc`;
+      link.download = `إشعار بدون صائر التنفيذ-${printData.suspectName} - ${printData.fileNumber.replace(/\//g, '-')}.doc`;
       
       document.body.appendChild(link);
       link.click();

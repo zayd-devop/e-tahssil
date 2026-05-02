@@ -67,6 +67,22 @@ export function OutstandingDebtsModule() {
     setIsUploading(true);
     setError(null);
 
+    // ⏳ 1. Afficher le SweetAlert de chargement
+    Swal.fire({
+      title: 'جاري الاستيراد...',
+      text: 'المرجو الانتظار بينما يتم رفع ومعالجة الملف...',
+      allowOutsideClick: false, // Empêche de fermer en cliquant à côté
+      allowEscapeKey: false,
+      showConfirmButton: false,
+      didOpen: () => {
+        Swal.showLoading(); // Affiche le spinner animé de SweetAlert
+      },
+      customClass: {
+        title: 'font-sans font-bold text-[#003366]',
+        popup: 'rounded-2xl',
+      }
+    });
+
     try {
       const response = await fetch('http://localhost:8000/api/outstanding-debts/import', {
         method: 'POST',
@@ -76,10 +92,12 @@ export function OutstandingDebtsModule() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Erreur lors de l'importation");
+        throw new Error(errorData.message || "حدث خطأ أثناء الاستيراد"); // Message d'erreur par défaut en arabe
       }
 
       await fetchDebts(); 
+      
+      // ✅ 2. Remplacer par le SweetAlert de succès
       Swal.fire({
         title: 'نجاح!',
         text: 'تم استيراد الملف بنجاح!',
@@ -87,16 +105,26 @@ export function OutstandingDebtsModule() {
         confirmButtonText: 'حسناً',
         confirmButtonColor: '#003366',
         iconColor: '#D4AF37',
+        customClass: {
+          title: 'font-sans font-bold text-[#003366]',
+          popup: 'rounded-2xl',
+        }
       });
       
     } catch (err) {
       console.error("Erreur d'importation:", err);
+      
+      // ❌ 3. Remplacer par le SweetAlert d'erreur
       Swal.fire({
         title: 'خطأ!',
-        text: 'فشل استيراد الملف. يرجى التحقق من التنسيق.',
+        text: err.message || 'فشل استيراد الملف. يرجى التحقق من التنسيق.',
         icon: 'error',
         confirmButtonText: 'إغلاق',
-        confirmButtonColor: '#d33',
+        confirmButtonColor: '#ef4444',
+        customClass: {
+          title: 'font-sans font-bold',
+          popup: 'rounded-2xl',
+        }
       });
     } finally {
       setIsUploading(false);
