@@ -1,39 +1,26 @@
 import React, { useState } from 'react';
 import { FraisStatsForm } from './FraisStatsForm';
 import { FraisLiquidationTable } from './FraisLiquidationTable';
-import { FraisSaisieForm } from './FraisSaisieForm';
-import { BarChart3, FileSpreadsheet, Calculator } from 'lucide-react';
+import { BarChart3, FileSpreadsheet } from 'lucide-react';
 
-interface FraisModuleProps {}
-
-export function FraisModule({}: FraisModuleProps = {}) {
-  const language = 'ar';
-  const isRTL = true;
-  const [activeTab, setActiveTab] = useState<'stats' | 'bilan' | 'saisie'>('stats');
+export function FraisModule() {
+  const [activeTab, setActiveTab] = useState('stats');
 
   const tabs = [
     {
       id: 'stats',
-      labelAr: 'إدخال الإحصائيات',
-      labelFr: 'Saisie des Statistiques',
+      label: 'إدخال الإحصائيات',
       icon: <BarChart3 className="w-5 h-5" />
     },
     {
       id: 'bilan',
-      labelAr: 'الإحصاء الشهري',
-      labelFr: 'Bilan Mensuel',
+      label: 'الإحصاء الشهري',
       icon: <FileSpreadsheet className="w-5 h-5" />
-    },
-    {
-      id: 'saisie',
-      labelAr: 'الإدخال الفردي (غرامات)',
-      labelFr: 'Saisie Unitaire',
-      icon: <Calculator className="w-5 h-5" />
     }
   ];
 
   return (
-    <div className="space-y-6 flex flex-col" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="space-y-6 flex flex-col" dir="rtl">
       {/* Modern Tabs Navigation */}
       <div className="bg-white/80 backdrop-blur-sm rounded-xl p-1.5 shadow-sm border border-gray-200 flex overflow-x-auto w-fit max-w-full">
         <div className="flex items-center gap-1">
@@ -42,7 +29,7 @@ export function FraisModule({}: FraisModuleProps = {}) {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2.5 px-6 py-3 rounded-lg font-bold text-sm sm:text-base transition-all duration-300 whitespace-nowrap ${
                   isActive 
                     ? 'bg-[#003366] text-white shadow-md transform scale-[1.02]' 
@@ -50,7 +37,7 @@ export function FraisModule({}: FraisModuleProps = {}) {
                 }`}
               >
                 <span className={isActive ? 'text-[#D4AF37]' : 'opacity-70'}>{tab.icon}</span>
-                <span>{language === 'ar' ? tab.labelAr : tab.labelFr}</span>
+                <span>{tab.label}</span>
               </button>
             );
           })}
@@ -61,7 +48,6 @@ export function FraisModule({}: FraisModuleProps = {}) {
       <div className="transition-opacity duration-300">
         {activeTab === 'stats' && <FraisStatsForm />}
         {activeTab === 'bilan' && <FraisLiquidationTable />}
-        {activeTab === 'saisie' && <FraisSaisieForm />}
       </div>
     </div>
   );

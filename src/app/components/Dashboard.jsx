@@ -9,7 +9,7 @@ import { ProductionCards } from './ProductionCards';
 import { DocumentGenerator } from './DocumentGenerator';
 import { RecouvrementForm } from './RecouvrementForm';
 import { NotificationForm } from './NotificationForm';
-import { FraisModule } from './FraisModule';
+import { FraisModule } from './TassfiyatSawaer/FraisModule';
 import { RegistryOfExtracts } from './RegistryOfExtracts';
 import { OutstandingDebtsModule } from './OutstandingDebtsModule';
 import { UserManagementModule } from './UserManagementModule';
