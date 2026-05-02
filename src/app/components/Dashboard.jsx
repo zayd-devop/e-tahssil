@@ -13,6 +13,7 @@ import { FraisModule } from './TassfiyatSawaer/FraisModule';
 import { RegistryOfExtracts } from './RegistryOfExtracts';
 import { OutstandingDebtsModule } from './OutstandingDebtsModule';
 import { UserManagementModule } from './UserManagementModule';
+import DirectedProcedureModule from './DirectedProcedureModule';
 
 export function Dashboard({ onLogout, initialRole = 'admin' }) {
   const [role, setRole] = useState(initialRole);
@@ -100,6 +101,8 @@ export function Dashboard({ onLogout, initialRole = 'admin' }) {
           {activeMenu === 'documents' && <DocumentGenerator />}
 
           {activeMenu === 'outstanding' && <OutstandingDebtsModule />}
+
+          {activeMenu === 'directed' && <DirectedProcedureModule />}
 
           {/* {activeMenu === 'recouvrement' && <RecouvrementForm />}
           
