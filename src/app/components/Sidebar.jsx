@@ -7,7 +7,8 @@ import {
   Calculator, 
   BookOpen, 
   FileSignature,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Users
 } from 'lucide-react';
 
 export function Sidebar({ activeMenu, onMenuChange, role }) {
@@ -16,11 +17,12 @@ export function Sidebar({ activeMenu, onMenuChange, role }) {
     { id: 'production', icon: ClipboardList, label: 'بطائق الإنتاج' },
     { id: 'directed', icon: FileSpreadsheet, label: 'إجراء يوجه' },
     { id: 'outstanding', icon: BookOpen, label: 'الباقي بدون تحصيل' },
-    { id: 'notification', icon: Bell, label: 'تبليغ المقررات' },
-    { id: 'recouvrement', icon: Wallet, label: 'التحصيل' },
+    // { id: 'notification', icon: Bell, label: 'تبليغ المقررات' },
+    // { id: 'recouvrement', icon: Wallet, label: 'التحصيل' },
     { id: 'frais', icon: Calculator, label: 'تصفية الصوائر' },
-    { id: 'extraits', icon: BookOpen, label: 'سجل المستخرجات' },
+    // { id: 'extraits', icon: BookOpen, label: 'سجل المستخرجات' },
     { id: 'documents', icon: FileSignature, label: 'توليد الوثائق' },
+    { id: 'users', icon: Users, label: 'إدارة الموظفين', adminOnly: true },
   ];
 
   return (

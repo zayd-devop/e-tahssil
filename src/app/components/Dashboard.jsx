@@ -12,6 +12,7 @@ import { NotificationForm } from './NotificationForm';
 import { FraisModule } from './FraisModule';
 import { RegistryOfExtracts } from './RegistryOfExtracts';
 import { OutstandingDebtsModule } from './OutstandingDebtsModule';
+import { UserManagementModule } from './UserManagementModule';
 
 export function Dashboard({ onLogout, initialRole = 'admin' }) {
   const [role, setRole] = useState(initialRole);
@@ -100,13 +101,15 @@ export function Dashboard({ onLogout, initialRole = 'admin' }) {
 
           {activeMenu === 'outstanding' && <OutstandingDebtsModule />}
 
-          {activeMenu === 'recouvrement' && <RecouvrementForm />}
+          {/* {activeMenu === 'recouvrement' && <RecouvrementForm />}
           
-          {activeMenu === 'notification' && <NotificationForm />}
+          {activeMenu === 'notification' && <NotificationForm />} */}
 
           {activeMenu === 'frais' && <FraisModule />}
           
-          {activeMenu === 'extraits' && <RegistryOfExtracts role={role} />}
+          {/* {activeMenu === 'extraits' && <RegistryOfExtracts role={role} />} */}
+
+          {activeMenu === 'users' && <UserManagementModule />}
 
           {['tresorerie'].includes(activeMenu) && (
             <div className="bg-white rounded-xl shadow-sm p-8 text-center">
