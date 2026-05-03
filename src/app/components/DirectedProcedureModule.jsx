@@ -323,7 +323,6 @@ const handleDownloadWord = () => {
       formattedMainText = formattedMainText.replace('عاجلا', '<u>عاجلا</u>');
 
       // --- جلب بيانات المستخدم المتصل من الـ LocalStorage للتوقيع ---
-      // --- جلب بيانات المستخدم المتصل من الـ LocalStorage للتوقيع ---
       let signerName = '.............................................';
       let signerRole = 'كاتب الضبط'; // قيمة افتراضية
 
@@ -331,9 +330,9 @@ const handleDownloadWord = () => {
       if (userStorage) {
         const userData = JSON.parse(userStorage);
         
-        // جلب البيانات من علاقة clerk التي أرسلها Laravel
-        const prenom = userData?.clerk?.prenom || '';
-        const nom = userData?.clerk?.nom || '';
+        // 1. استخراج الاسم والنسب (للمدير أو لكاتب الضبط)
+        const prenom = userData.prenom || userData?.clerk?.prenom || userData?.admin?.prenom || '';
+        const nom = userData.nom || userData?.clerk?.nom || userData?.admin?.nom || '';
         
         if (prenom || nom) {
           signerName = `${prenom} ${nom}`.trim();
@@ -341,11 +340,15 @@ const handleDownloadWord = () => {
           signerName = userData.name || 'الاسم غير متوفر'; 
         }
 
-        // جلب صفة المسؤولية
-        if (userData?.clerk?.type_responsabilite) {
-          signerRole = userData.clerk.type_responsabilite;
+        // 2. استخراج الدور / المسؤولية
+        let currentStatus = userData.type_responsabilite || userData?.clerk?.type_responsabilite || userData?.admin?.type_responsabilite;
+        if (currentStatus) {
+           signerRole = currentStatus;
+        } else if (userData.role === 'admin') {
+           signerRole = 'رئيس الوحدة'; // قيمة افتراضية إذا كان أدمن ولم تُحدد مسؤوليته
         }
       }
+
       const wordDocumentHTML = `
         <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
         <head>
@@ -434,7 +437,7 @@ const handleDownloadWord = () => {
                   حرر بطنجة في: ${printData.issueDate}
                 </p>
                 
-                <!-- التعديل هنا: دمج اسم الموظف وصفته -->
+                <!-- التعديل هنا: دمج اسم الموظف المتصل وصفته -->
                 <p style="font-size: 16pt; font-weight: bold; line-height: 1.5;">
                   عن رئيس مصلحة كتابة الضبط<br>
                   ${signerName}<br>
