@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Upload, FileSpreadsheet, Pencil, Printer, FileText, CheckCircle2, Search, X, Plus, MapPin, Filter, Download, Loader2 } from 'lucide-react';
+import { Upload, FileSpreadsheet, Pencil, Printer, FileText, CheckCircle2, Search, X, Plus, MapPin, Filter, Download, Loader2, LogOut } from 'lucide-react'; // أضفنا LogOut
 import Swal from 'sweetalert2';
 
-export function DirectedProcedureModule() {
+// لاحظ أنني استقبلت onLogout هنا من الـ App.jsx
+export function DirectedProcedureModule({ onLogout }) {
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -57,7 +58,7 @@ export function DirectedProcedureModule() {
       
       if (response.status === 401) {
         // إذا كان التوكن منتهي أو غير صالح، نوجهه لصفحة الدخول
-        window.location.href = '/login';
+        if (onLogout) onLogout();
         return;
       }
 
@@ -315,12 +316,36 @@ export function DirectedProcedureModule() {
     });
   };
 
-  const handleDownloadWord = () => {
+const handleDownloadWord = () => {
     try {
       let formattedMainText = printData.mainText.replace(/\n/g, '<br>');
       formattedMainText = formattedMainText.replace('عاجـلا', '<u>عاجـلا</u>');
       formattedMainText = formattedMainText.replace('عاجلا', '<u>عاجلا</u>');
 
+      // --- جلب بيانات المستخدم المتصل من الـ LocalStorage للتوقيع ---
+      // --- جلب بيانات المستخدم المتصل من الـ LocalStorage للتوقيع ---
+      let signerName = '.............................................';
+      let signerRole = 'كاتب الضبط'; // قيمة افتراضية
+
+      const userStorage = localStorage.getItem('user');
+      if (userStorage) {
+        const userData = JSON.parse(userStorage);
+        
+        // جلب البيانات من علاقة clerk التي أرسلها Laravel
+        const prenom = userData?.clerk?.prenom || '';
+        const nom = userData?.clerk?.nom || '';
+        
+        if (prenom || nom) {
+          signerName = `${prenom} ${nom}`.trim();
+        } else {
+          signerName = userData.name || 'الاسم غير متوفر'; 
+        }
+
+        // جلب صفة المسؤولية
+        if (userData?.clerk?.type_responsabilite) {
+          signerRole = userData.clerk.type_responsabilite;
+        }
+      }
       const wordDocumentHTML = `
         <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
         <head>
@@ -409,9 +434,11 @@ export function DirectedProcedureModule() {
                   حرر بطنجة في: ${printData.issueDate}
                 </p>
                 
-                <p style="font-size: 16pt; font-weight: bold;">
+                <!-- التعديل هنا: دمج اسم الموظف وصفته -->
+                <p style="font-size: 16pt; font-weight: bold; line-height: 1.5;">
                   عن رئيس مصلحة كتابة الضبط<br>
-                  .............................................
+                  ${signerName}<br>
+                  <span style="font-size: 12pt; font-weight: normal; color: #333;">${signerRole}</span>
                 </p>
               </td>
             </tr>
@@ -503,6 +530,17 @@ export function DirectedProcedureModule() {
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}
               <span>استيراد ملف Excel</span>
             </button>
+
+            {/* زر تسجيل الخروج */}
+            {onLogout && (
+              <button 
+                onClick={onLogout} 
+                className="flex items-center gap-2 px-6 py-3.5 bg-white text-red-600 border border-red-200 rounded-xl font-bold hover:bg-red-50 transition-all shadow-sm"
+              >
+                <LogOut className="w-5 h-5" />
+                <span>تسجيل الخروج</span>
+              </button>
+            )}
           </div>
         </div>
 
