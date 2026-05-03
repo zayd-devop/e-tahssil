@@ -1,27 +1,54 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Bell, User, LogOut } from 'lucide-react';
 
 export function TopBar({ onNotificationClick, onLogout, role, onRoleChange }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
-
-  const adminInfo = {
-    name: 'سعيدة العاطفي',
-    status: 'رئيسة الوحدة',
-    color: '#D4AF37', // Gold
-    bgClass: 'bg-[#D4AF37]',
-    textClass: 'text-[#D4AF37]'
-  };
-
-  const clerkInfo = {
-    name: 'عدنان',
-    status: 'منتدب قضائي',
-    color: '#003366', // Navy
+  const [currentUser, setCurrentUser] = useState({
+    name: 'جاري التحميل...',
+    status: '',
+    color: '#003366',
     bgClass: 'bg-[#003366]',
     textClass: 'text-[#003366]'
-  };
+  });
 
-  const currentUser = role === 'admin' ? adminInfo : clerkInfo;
+  useEffect(() => {
+    const userStorage = localStorage.getItem('user');
+    if (userStorage) {
+      const userData = JSON.parse(userStorage);
+      
+      // 1. استخراج الاسم والنسب بذكاء (للمدير أو لكاتب الضبط)
+      // نبحث في الكائن نفسه، ثم في كائن clerk، ثم في كائن admin (إن وجد)
+      const prenom = userData.prenom || userData?.clerk?.prenom || userData?.admin?.prenom || '';
+      const nom = userData.nom || userData?.clerk?.nom || userData?.admin?.nom || '';
+      
+      let fullName = 'مستخدم';
+      
+      if (prenom || nom) {
+        fullName = `${prenom} ${nom}`.trim(); // إذا كان لديه اسم ونسب منفصلين
+      } else if (userData.name) {
+        fullName = userData.name; // إذا كان اسمه محفوظاً كـ name واحد في جدول users
+      }
+
+      // 2. استخراج الصفة / الدور
+      let currentStatus = userData.type_responsabilite || userData?.clerk?.type_responsabilite || userData?.admin?.type_responsabilite;
+      if (!currentStatus) {
+         // إذا لم تكن الصفة محددة في قاعدة البيانات، نضع صفة افتراضية حسب نوع حسابه
+         currentStatus = userData.role === 'admin' ? 'رئيس الوحدة' : 'كاتب الضبط';
+      }
+
+      // 3. تحديد الألوان (الذهبي للمدير، والأزرق لكاتب الضبط)
+      const isAdmin = userData.role === 'admin' || role === 'admin';
+
+      setCurrentUser({
+        name: fullName,
+        status: currentStatus,
+        color: isAdmin ? '#D4AF37' : '#003366',
+        bgClass: isAdmin ? 'bg-[#D4AF37]' : 'bg-[#003366]',
+        textClass: isAdmin ? 'text-[#D4AF37]' : 'text-[#003366]'
+      });
+    }
+  }, [role]); 
 
   const t = {
     kingdom: 'المملكة المغربية',
@@ -43,7 +70,6 @@ export function TopBar({ onNotificationClick, onLogout, role, onRoleChange }) {
         
         {/* Section Droite (Logo & Recherche) */}
         <div className="flex items-center gap-6">
-          {/* Logo du Ministère & Titre */}
           <div className="flex items-center gap-3 pl-6 border-l border-gray-200">
             <div className="w-12 h-12 bg-[#003366] rounded-full flex items-center justify-center shrink-0">
               <div className="w-8 h-8">
@@ -58,21 +84,10 @@ export function TopBar({ onNotificationClick, onLogout, role, onRoleChange }) {
               <p className="text-xs text-gray-600 whitespace-nowrap">{t.ministry}</p>
             </div>
           </div>
-
         </div>
 
         {/* Section Gauche (Actions & Profil) */}
         <div className="flex items-center gap-4">
-          {/* Score de performance */}
-          {/* <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-[#D4AF37]/10 to-transparent border border-[#D4AF37]/30 rounded-lg">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-            <div className="text-right">
-              <p className="text-xs text-gray-500 font-medium">مؤشر الأداء</p>
-              <p className="text-sm font-bold text-[#003366]">850 pts <span className="text-emerald-600 text-xs font-semibold">(مرتفع)</span></p>
-            </div>
-          </div> */}
-
-          {/* Cloche de notifications */}
           <button 
             onClick={onNotificationClick}
             className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -81,24 +96,22 @@ export function TopBar({ onNotificationClick, onLogout, role, onRoleChange }) {
             <span className="absolute top-1 left-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
           </button>
           
-          {/* Profil utilisateur */}
           <div className="relative">
             <button 
               onClick={() => setShowUserMenu(!showUserMenu)}
               className="flex items-center gap-3 pr-4 border-r border-gray-200 hover:bg-gray-50 rounded-lg p-2 transition-colors"
             >
-              <div className={`w-10 h-10 ${currentUser.bgClass} rounded-full flex items-center justify-center shrink-0`}>
+              <div className={`w-10 h-10 ${currentUser.bgClass} rounded-full flex items-center justify-center shrink-0 transition-colors duration-300`}>
                 <User className="w-6 h-6 text-white" />
               </div>
               <div className="text-right">
                 <p className="text-sm font-bold text-gray-900 whitespace-nowrap">{currentUser.name}</p>
-                <div className={`inline-block text-[11px] font-bold px-2 py-0.5 rounded mt-0.5 ${role === 'admin' ? 'bg-[#D4AF37]/10 text-[#D4AF37]' : 'bg-[#003366]/10 text-[#003366]'}`}>
+                <div className={`inline-block text-[11px] font-bold px-2 py-0.5 rounded mt-0.5 transition-colors duration-300 ${currentUser.textClass} bg-opacity-10`} style={{ backgroundColor: `${currentUser.color}1A` }}>
                   {currentUser.status}
                 </div>
               </div>
             </button>
 
-            {/* Menu déroulant */}
             {showUserMenu && (
               <div className="absolute top-full mt-2 left-0 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden">
                 <div className="px-4 py-4 bg-gray-50 border-b border-gray-100 flex items-center gap-3">
