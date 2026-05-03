@@ -1,10 +1,20 @@
-import React, { useState } from 'react';
-import { FileText, Download, Car, Search, Gavel, ChevronDown, FolderOpen } from 'lucide-react';
-
+import React, { useState, useEffect } from 'react';
+import { FileText, Download, Car, Search, Gavel, ChevronDown, FolderOpen, History, X, Loader2 } from 'lucide-react';
+import Swal from 'sweetalert2';
 export function DocumentGenerator() {
   // --- 1. ÉTATS ---
   const [activeCategory, setActiveCategory] = useState('vehicles');
   const [activeDoc, setActiveDoc] = useState(null); // On met ton document par défaut
+  const [showHistory, setShowHistory] = useState(false);
+
+  const [foldersHistory, setFoldersHistory] = useState([]); 
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [paginationMeta, setPaginationMeta] = useState(null);
+
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const [formErrors, setFormErrors] = useState({});
   
   // État pour les données générales (qui restent en mémoire)
   const [generalData, setGeneralData] = useState({
@@ -178,15 +188,152 @@ export function DocumentGenerator() {
   const handleGeneralChange = (e) => setGeneralData({ ...generalData, [e.target.name]: e.target.value });
   const handleSpecificChange = (e) => setSpecificData({ ...specificData, [e.target.name]: e.target.value });
 
-  const handleGenerate = (e) => {
+  const handleGenerate = async (e) => {
     e.preventDefault();
-    console.log("Génération du document avec :", { ...generalData, ...specificData });
-    alert('جاري تحميل المستند...');
+
+    // ==========================================
+    // 1. VALIDATION FRONT-END (UX Parfaite)
+    // ==========================================
+    let errors = {};
+
+    if (!generalData.dossierNum || generalData.dossierNum.trim() === '') {
+      errors.dossierNum = "رقم الملف مطلوب لتوليد الوثيقة";
+    }
+    if (!generalData.debtorName || generalData.debtorName.trim() === '') {
+      errors.debtorName = "الاسم الكامل للمدين مطلوب";
+    }
+    // Tu peux ajouter d'autres vérifications ici (montant, etc.)
+
+    // S'il y a des erreurs, on arrête tout
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors); // Déclenche l'affichage des textes rouges sous les inputs
+      
+      // Petite alerte douce (Warning) au lieu de l'erreur système (Error)
+      Swal.fire({
+        title: 'معلومات ناقصة!',
+        text: 'المرجو التأكد من ملء جميع المعلومات.',
+        icon: 'warning',
+        confirmButtonColor: '#D4AF37', // Couleur dorée
+        confirmButtonText: 'حسناً'
+      });
+      return; // 🛑 ON ARRÊTE LA FONCTION ICI (le serveur n'est même pas contacté)
+    }
+
+    // Si tout est bien rempli, on nettoie les erreurs précédentes
+    setFormErrors({});
+    
+    // ==========================================
+    // 2. ENVOI AU SERVEUR (Le code que tu as déjà)
+    // ==========================================
+    setIsGenerating(true);
+
+    const payload = {
+      ...generalData,
+      ...specificData,
+      activeDoc: activeDoc,
+    };
+
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/generate-document', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de la génération');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      
+      const safeDossierNum = generalData.dossierNum.replace(/\//g, '-');
+      a.download = `${activeDoc}_${safeDossierNum}.docx`; 
+      
+      document.body.appendChild(a);
+      a.click();
+      
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      // 👇 SWEETALERT DE SUCCÈS 👇
+      Swal.fire({
+        title: 'تم بنجاح!',
+        text: 'تم توليد المستند وتحميله بنجاح.',
+        icon: 'success',
+        confirmButtonColor: '#003366', // La couleur bleue de ton thème
+        confirmButtonText: 'حسناً',
+        iconColor: '#D4AF37' // La couleur dorée
+      });
+
+    } catch (error) {
+      console.error("Erreur complète :", error);
+      
+      // 👇 SWEETALERT D'ERREUR 👇
+      Swal.fire({
+        title: 'خطأ في النظام!',
+        text: ' حدث خطأ المرجو المحاولة لاحقا',
+        icon: 'error',
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'إغلاق'
+      });
+    } finally {
+      // 2. Peu importe si ça a marché ou échoué, on arrête le spinner
+      setIsGenerating(false);
+    }
   };
 
   const currentConfig = docConfigs[activeDoc] || { title: 'وثيقة غير متوفرة', fields: [] };
   const inputClassName = "w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] outline-none text-[#003366] bg-white";
+  // Fonction pour charger l'historique depuis Laravel (avec Pagination)
+  useEffect(() => {
+    if (showHistory) {
+      const fetchHistory = async () => {
+        setIsLoadingHistory(true);
+        try {
+          // On ajoute ?page= au lien de l'API
+          const response = await fetch(`http://127.0.0.1:8000/api/folders?page=${currentPage}`);
+          if (response.ok) {
+            const result = await response.json();
+            
+            // Attention : avec paginate(), les dossiers sont dans result.data
+            setFoldersHistory(result.data); 
+            
+            // On sauvegarde les informations de pagination
+            setPaginationMeta({
+              current_page: result.current_page,
+              last_page: result.last_page,
+              total: result.total
+            });
+          }
+        } catch (error) {
+          console.error("Erreur API :", error);
+        } finally {
+          setIsLoadingHistory(false);
+        }
+      };
+      
+      fetchHistory();
+    }
+  }, [showHistory, currentPage]); // 👈 Très important : on relance le useEffect si currentPage change// Le useEffect se déclenche à chaque fois que showHistory change
 
+  // Fonction MAGIQUE pour remplir le formulaire quand on clique sur "استرجاع"
+  const handleRestoreFolder = (folder) => {
+    setGeneralData({
+      dossierNum: folder.dossier_num,
+      debtorName: folder.debtor_name,
+      debtorCIN: folder.debtor_cin || '',
+      debtorAddress: folder.debtor_address || '',
+      debtAmount: folder.debt_amount
+    });
+    setShowHistory(false); // On ferme la modale
+  };
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 max-w-6xl mx-auto mt-6 font-sans" dir="rtl">
       
@@ -198,9 +345,16 @@ export function DocumentGenerator() {
           </div>
           <div className="text-right">
             <h2 className="text-2xl font-bold text-[#003366]">توليد الوثائق الرسمية</h2>
-            <p className="text-gray-500 mt-1 font-medium">نماذج احترافية للقرارات القضائية وإجراءات التحصيل</p>
+            <p className="text-gray-500 mt-1 font-medium">نماذج إجراءات التحصيل</p>
           </div>
         </div>
+        <button 
+          onClick={() => setShowHistory(true)}
+          className="flex items-center gap-2 px-5 py-2.5 bg-gray-50 text-[#003366] border border-gray-200 rounded-xl hover:bg-[#003366] hover:text-white transition-all font-bold shadow-sm"
+        >
+          <History className="w-5 h-5" />
+          <span>الأرشيف والسجل</span>
+        </button>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8 items-start">
@@ -332,12 +486,31 @@ export function DocumentGenerator() {
               )}
             </div>
 
-            <div className="pt-4 border-t border-gray-200 flex justify-end">
-              <button type="submit" className="flex items-center gap-2 px-8 py-3.5 bg-[#D4AF37] text-white rounded-xl font-bold hover:bg-[#C5A028] transition-all shadow-lg active:scale-95">
+            <div className="flex justify-end pt-6 border-t border-gray-100">
+          <button 
+            onClick={handleGenerate}
+            disabled={isGenerating} // Désactive le clic pendant le chargement
+            className={`flex items-center gap-2 px-8 py-3.5 rounded-xl font-bold transition-all duration-300 shadow-sm ${
+              isGenerating 
+                ? 'bg-gray-400 text-white cursor-not-allowed' // Style quand ça charge
+                : 'bg-[#D4AF37] text-white hover:bg-[#b5952f] hover:-translate-y-0.5 hover:shadow-lg' // Style normal
+            }`}
+          >
+            {isGenerating ? (
+              // Ce qui s'affiche PENDANT le chargement
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>جاري التوليد...</span>
+              </>
+            ) : (
+              // Ce qui s'affiche NORMALEMENT
+              <>
                 <Download className="w-5 h-5" />
                 <span>توليد المستند (Word)</span>
-              </button>
-            </div>
+              </>
+            )}
+          </button>
+        </div>
 
           </form>
             </>
@@ -355,6 +528,122 @@ export function DocumentGenerator() {
         </div>
 
       </div>
+      {/* ===== FENÊTRE MODALE DE L'HISTORIQUE ===== */}
+      {showHistory && (
+        <div className="fixed inset-0 bg-[#003366]/40 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+          
+          {/* La Card de l'historique */}
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+            
+            {/* En-tête de la modale */}
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <h3 className="font-bold text-[#003366] text-xl flex items-center gap-2">
+                <History className="w-6 h-6 text-[#D4AF37]" />
+                سجل الملفات والوثائق المولدة
+              </h3>
+              <button 
+                onClick={() => setShowHistory(false)} 
+                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Contenu : Le Tableau */}
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="border border-gray-200 rounded-xl overflow-hidden">
+                <table className="w-full text-right border-collapse">
+                  <thead className="bg-[#003366] text-white">
+                    <tr>
+                      <th className="p-4 font-semibold text-sm">رقم الملف</th>
+                      <th className="p-4 font-semibold text-sm">الاسم الكامل للمدين</th>
+                      <th className="p-4 font-semibold text-sm">رقم ب.ت.و</th>
+                      <th className="p-4 font-semibold text-sm">المبلغ المستحق</th>
+                      <th className="p-4 font-semibold text-sm">تاريخ الإضافة</th>
+                      <th className="p-4 font-semibold text-sm text-center">إجراء</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-gray-700">
+                    
+                    {isLoadingHistory ? (
+                      /* Affichage pendant le chargement */
+                      <tr>
+                        <td colSpan="6" className="p-8 text-center text-gray-500 font-medium">
+                          <div className="flex items-center justify-center gap-3">
+                            <div className="w-5 h-5 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
+                            جاري تحميل البيانات...
+                          </div>
+                        </td>
+                      </tr>
+                    ) : foldersHistory.length === 0 ? (
+                      /* Affichage si la base de données est vide */
+                      <tr>
+                        <td colSpan="6" className="p-8 text-center text-gray-500">
+                          لا توجد ملفات محفوظة حاليا في قاعدة البيانات.
+                        </td>
+                      </tr>
+                    ) : (
+                      /* Affichage des vraies données de Laravel */
+                      foldersHistory.map((folder) => (
+                        <tr key={folder.id} className="border-b border-gray-100 hover:bg-blue-50/50 transition-colors">
+                          <td className="p-4 font-bold text-[#003366]">{folder.dossier_num}</td>
+                          <td className="p-4">{folder.debtor_name}</td>
+                          <td className="p-4 text-gray-500">{folder.debtor_cin || '-'}</td>
+                          <td className="p-4 font-bold text-red-600">{folder.debt_amount} درهم</td>
+                          <td className="p-4 text-sm text-gray-500">
+                            {/* Formater la date proprement */}
+                            {new Date(folder.created_at).toLocaleDateString('fr-FR')}
+                          </td>
+                          <td className="p-4 text-center">
+                            <button 
+                              onClick={() => handleRestoreFolder(folder)}
+                              className="text-sm text-[#D4AF37] hover:text-[#003366] font-bold px-3 py-1 bg-[#D4AF37]/10 hover:bg-[#D4AF37]/20 rounded-lg transition-colors"
+                            >
+                              استرجاع
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+
+                  </tbody>
+                </table>
+                {/* Pagination (Affichée seulement si on a des données) */}
+              {paginationMeta && paginationMeta.last_page > 1 && (
+                <div className="mt-4 p-4 border border-gray-200 rounded-xl bg-gray-50 flex items-center justify-between">
+                  <div className="text-sm text-gray-500">
+                    إجمالي الملفات: <span className="font-bold text-[#003366]">{paginationMeta.total}</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      السابق
+                    </button>
+                    
+                    <span className="text-sm font-bold text-[#003366]">
+                      الصفحة {paginationMeta.current_page} من {paginationMeta.last_page}
+                    </span>
+                    
+                    <button
+                      onClick={() => setCurrentPage(p => Math.min(paginationMeta.last_page, p + 1))}
+                      disabled={currentPage === paginationMeta.last_page}
+                      className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      التالي
+                    </button>
+                  </div>
+                </div>
+              )}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }
