@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Upload, FileSpreadsheet, Pencil, Printer, FileText, CheckCircle2, Search, X, Plus, MapPin, Filter, Download, Loader2 } from 'lucide-react';
-import Swal from 'sweetalert2'; // <-- استيراد SweetAlert
+import Swal from 'sweetalert2';
 
 export function DirectedProcedureModule() {
   const [data, setData] = useState([]);
@@ -33,6 +33,9 @@ export function DirectedProcedureModule() {
   const fileInputRef = useRef(null);
   const API_URL = 'http://127.0.0.1:8000/api/procedures';
 
+  // دالة مساعدة لجلب التوكن
+  const getToken = () => localStorage.getItem('token');
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -41,10 +44,23 @@ export function DirectedProcedureModule() {
     setCurrentPage(1);
   }, [searchQuery, selectedRole, data]);
 
+  // 1. تحديث دالة جلب البيانات (إضافة التوكن)
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(API_URL);
+      const response = await fetch(API_URL, {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${getToken()}` // <--- تم إضافة التوكن هنا
+        }
+      });
+      
+      if (response.status === 401) {
+        // إذا كان التوكن منتهي أو غير صالح، نوجهه لصفحة الدخول
+        window.location.href = '/login';
+        return;
+      }
+
       const result = await response.json();
       setData(result);
     } catch (error) {
@@ -60,141 +76,19 @@ export function DirectedProcedureModule() {
     }
   };
 
-  const handleSave = async () => {
-    try {
-      // إظهار نافذة التحميل الخاصة بـ SweetAlert
-      Swal.fire({
-        title: 'جاري الحفظ...',
-        text: 'الرجاء الانتظار بينما يتم حفظ التعديلات',
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading();
-        }
-      });
-
-      const partiesToSave = editingRow.combinedParties.map(p => p.name).filter(n => n.trim() !== '');
-      const rolesToSave = Array.from(new Set(editingRow.combinedParties.map(p => p.role).filter(r => r.trim() !== ''))).join(' / ');
-      const addressesToSave = Array.from(new Set(editingRow.combinedParties.map(p => p.address).filter(a => a.trim() !== ''))).join('\n');
-      const decisionsToSave = Array.from(new Set(editingRow.combinedParties.map(p => p.decision).filter(d => d.trim() !== ''))).join('\n');
-
-      const payload = {
-        ...editingRow,
-        parties: partiesToSave,
-        role: rolesToSave,
-        address: addressesToSave,
-        decision: decisionsToSave
-      };
-
-      delete payload.combinedParties;
-      delete payload.currentEditIndex;
-
-      const response = await fetch(`${API_URL}/${editingRow.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (response.ok) {
-        setData(data.map(item => item.id === editingRow.id ? payload : item));
-        handleCloseModal();
-        // رسالة نجاح
-        Swal.fire({
-          icon: 'success',
-          title: 'تم الحفظ!',
-          text: 'تم حفظ التعديلات بنجاح',
-          confirmButtonColor: '#003366',
-          timer: 2000
-        });
-      } else {
-        const errorData = await response.json();
-        Swal.fire({
-          icon: 'error',
-          title: 'خطأ!',
-          text: `حدث خطأ أثناء التعديل: ${errorData.message}`,
-          confirmButtonColor: '#003366'
-        });
-      }
-    } catch (error) {
-      console.error('خطأ:', error);
-      Swal.fire({
-        icon: 'error',
-        title: 'خطأ في الاتصال!',
-        text: 'تعذر الاتصال بالخادم',
-        confirmButtonColor: '#003366'
-      });
-    }
-  };
-
-  const handleCloseModal = () => {
-    setIsEditModalOpen(false);
-    setEditingRow(null);
-  };
-
-  const handleExcelUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    Swal.fire({
-      title: 'جاري الاستيراد...',
-      text: 'يتم الآن قراءة ومعالجة ملف Excel، قد يستغرق الأمر بضع ثوانٍ',
-      allowOutsideClick: false,
-      didOpen: () => {
-        Swal.showLoading();
-      }
-    });
-
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    try {
-      const response = await fetch(`${API_URL}/import`, {
-        method: 'POST',
-        body: formData,
-        headers: { 'Accept': 'application/json' }
-      });
-      const responseData = await response.json();
-
-      if (response.ok) {
-        Swal.fire({
-          icon: 'success',
-          title: 'تم الاستيراد بنجاح!',
-          text: `تمت إضافة الملفات إلى قاعدة البيانات`,
-          confirmButtonColor: '#003366'
-        });
-        fetchData(); 
-      } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'خطأ في الاستيراد',
-          text: responseData.details || responseData.error || 'تأكد من هيكل ملف الإكسل',
-          confirmButtonColor: '#003366'
-        });
-      }
-    } catch (error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'خطأ في الاتصال',
-        text: 'تعذر الاتصال بالخادم أثناء الاستيراد.',
-        confirmButtonColor: '#003366'
-      });
-    } finally {
-      event.target.value = null;
-    }
-  };
-
+  // --- دوال نافذة التعديل (EDIT) ---
   const handleEditClick = (row) => {
     const rolesArr = row.role ? row.role.split(' / ') : [];
     const addressesArr = row.address ? row.address.split('\n') : [];
     const decisionsArr = row.decision ? row.decision.split('\n') : [];
     
+    const isSingleParty = !row.parties || row.parties.length <= 1;
+
     const combinedParties = (row.parties && row.parties.length > 0 ? row.parties : ['']).map((partyName, index) => ({
       name: partyName,
-      role: rolesArr[index] || rolesArr[0] || '', 
-      address: addressesArr[index] || addressesArr[0] || '',
-      decision: decisionsArr[index] || decisionsArr[0] || ''
+      role: isSingleParty ? (row.role || '') : (rolesArr[index] || rolesArr[0] || ''), 
+      address: isSingleParty ? (row.address || '') : (addressesArr[index] || addressesArr[0] || ''),
+      decision: isSingleParty ? (row.decision || '') : (decisionsArr[index] || decisionsArr[0] || '')
     }));
 
     setEditingRow({ 
@@ -241,6 +135,147 @@ export function DirectedProcedureModule() {
     });
   };
 
+  // 2. تحديث دالة الحفظ (إضافة التوكن)
+  const handleSave = async () => {
+    try {
+      Swal.fire({
+        title: 'جاري الحفظ...',
+        text: 'الرجاء الانتظار بينما يتم حفظ التعديلات',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      const partiesToSave = editingRow.combinedParties.map(p => p.name).filter(n => n.trim() !== '');
+      
+      const extractUnique = (field, separator) => {
+        const allItems = editingRow.combinedParties
+          .map(p => p[field] || '')
+          .join(separator)
+          .split(separator)
+          .map(item => item.trim())
+          .filter(item => item !== '');
+        return Array.from(new Set(allItems)).join(separator);
+      };
+
+      const rolesToSave = extractUnique('role', ' / ');
+      const addressesToSave = extractUnique('address', '\n');
+      const decisionsToSave = extractUnique('decision', '\n');
+
+      const payload = {
+        ...editingRow,
+        parties: partiesToSave,
+        role: rolesToSave,
+        address: addressesToSave,
+        decision: decisionsToSave
+      };
+
+      delete payload.combinedParties;
+      delete payload.currentEditIndex;
+
+      const response = await fetch(`${API_URL}/${editingRow.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${getToken()}` // <--- تم إضافة التوكن هنا
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        setData(data.map(item => item.id === editingRow.id ? payload : item));
+        handleCloseModal();
+        Swal.fire({
+          icon: 'success',
+          title: 'تم الحفظ!',
+          text: 'تم حفظ التعديلات بنجاح',
+          confirmButtonColor: '#003366',
+          timer: 2000
+        });
+      } else {
+        const errorData = await response.json();
+        Swal.fire({
+          icon: 'error',
+          title: 'خطأ!',
+          text: `حدث خطأ أثناء التعديل: ${errorData.message}`,
+          confirmButtonColor: '#003366'
+        });
+      }
+    } catch (error) {
+      console.error('خطأ:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'خطأ في الاتصال!',
+        text: 'تعذر الاتصال بالخادم',
+        confirmButtonColor: '#003366'
+      });
+    }
+  };
+
+  const handleCloseModal = () => {
+    setIsEditModalOpen(false);
+    setEditingRow(null);
+  };
+
+  // 3. تحديث دالة الاستيراد (إضافة التوكن)
+  const handleExcelUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    Swal.fire({
+      title: 'جاري الاستيراد...',
+      text: 'يتم الآن قراءة ومعالجة ملف Excel، قد يستغرق الأمر بضع ثوانٍ',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      const response = await fetch(`${API_URL}/import`, {
+        method: 'POST',
+        body: formData,
+        headers: { 
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${getToken()}` // <--- تم إضافة التوكن هنا
+        }
+      });
+      const responseData = await response.json();
+
+      if (response.ok) {
+        Swal.fire({
+          icon: 'success',
+          title: 'تم الاستيراد بنجاح!',
+          text: `تمت إضافة الملفات إلى قاعدة البيانات`,
+          confirmButtonColor: '#003366'
+        });
+        fetchData(); 
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'خطأ في الاستيراد',
+          text: responseData.details || responseData.error || 'تأكد من هيكل ملف الإكسل',
+          confirmButtonColor: '#003366'
+        });
+      }
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'خطأ في الاتصال',
+        text: 'تعذر الاتصال بالخادم أثناء الاستيراد.',
+        confirmButtonColor: '#003366'
+      });
+    } finally {
+      event.target.value = null;
+    }
+  };
+
+  // --- دوال نافذة الطباعة (PRINT) ---
   const handlePrintClick = (row) => {
     const rolesArray = row.role ? row.role.split(' / ') : [];
     const addressesArray = row.address ? row.address.split('\n') : [];
@@ -389,7 +424,7 @@ export function DirectedProcedureModule() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `إشعار بدون صائر التنفيذ-${printData.documentType} - ${printData.fileNumber.replace(/\//g, '-')}.doc`;
+      link.download = `إشعار بدون صائر التنفيذ-${printData.suspectName} - ${printData.fileNumber.replace(/\//g, '-')}.doc`;
       
       document.body.appendChild(link);
       link.click();
@@ -416,6 +451,7 @@ export function DirectedProcedureModule() {
     }
   };
 
+  // --- دوال الجداول والبحث ---
   const splitText = (text, separator = '\n') => {
     if (!text) return [];
     return text.split(separator).filter(item => item.trim() !== '');
@@ -464,7 +500,6 @@ export function DirectedProcedureModule() {
           <div className="flex gap-3">
             <input type="file" accept=".xlsx, .xls, .csv" ref={fileInputRef} onChange={handleExcelUpload} className="hidden" />
             <button onClick={() => fileInputRef.current.click()} disabled={isLoading} className={`flex items-center gap-2 px-6 py-3.5 bg-[#D4AF37] text-[#003366] rounded-xl font-bold transition-all ${isLoading ? 'opacity-50 cursor-wait' : 'hover:bg-[#C5A028] shadow-lg hover:shadow-xl active:scale-95'}`}>
-              {/* تبديل أيقونة الاستيراد بأيقونة التحميل إذا كان يقرأ الملف */}
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}
               <span>استيراد ملف Excel</span>
             </button>
@@ -512,7 +547,6 @@ export function DirectedProcedureModule() {
                 {isLoading ? (
                   <tr>
                     <td colSpan="6" className="text-center py-20 text-gray-500">
-                      {/* واجهة تحميل جديدة بـ Loader احترافي */}
                       <div className="flex flex-col items-center justify-center gap-3">
                         <Loader2 className="w-10 h-10 animate-spin text-[#D4AF37]" />
                         <span className="font-bold text-[#003366]">جاري تحميل البيانات...</span>
@@ -665,7 +699,7 @@ export function DirectedProcedureModule() {
         </div>
       )}
 
-      {/* --- نافذة التعديل (EDIT MODAL) --- */}
+      {/* --- نافذة التعديل (EDIT MODAL) المتقدمة --- */}
       {isEditModalOpen && editingRow && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden my-8 border border-gray-100 relative animate-in fade-in zoom-in-95 duration-200">
@@ -724,16 +758,15 @@ export function DirectedProcedureModule() {
 
                      <div className="space-y-1.5">
                        <label className="block text-sm font-bold text-gray-700">العنوان</label>
-                       <textarea value={editingRow.combinedParties[editingRow.currentEditIndex].address} onChange={(e) => handlePartyEditChange('address', e.target.value)} rows={2} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-[#D4AF37] outline-none resize-none"></textarea>
+                       <textarea value={editingRow.combinedParties[editingRow.currentEditIndex].address} onChange={(e) => handlePartyEditChange('address', e.target.value)} rows={4} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-[#D4AF37] outline-none resize-none leading-relaxed"></textarea>
                      </div>
 
                      <div className="space-y-1.5">
                        <label className="block text-sm font-bold text-gray-700">المقرر</label>
-                       <textarea value={editingRow.combinedParties[editingRow.currentEditIndex].decision} onChange={(e) => handlePartyEditChange('decision', e.target.value)} rows={2} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-[#D4AF37] outline-none resize-none"></textarea>
+                       <textarea value={editingRow.combinedParties[editingRow.currentEditIndex].decision} onChange={(e) => handlePartyEditChange('decision', e.target.value)} rows={4} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-[#D4AF37] outline-none resize-none leading-relaxed"></textarea>
                      </div>
                   </div>
                 </div>
-
               </div>
             </div>
 

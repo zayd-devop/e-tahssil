@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
-import { User, Lock, Eye, EyeOff, Shield } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, Shield, Loader2 } from 'lucide-react'; // أضفنا Loader2
+import Swal from 'sweetalert2'; // استيراد SweetAlert للرسائل
 
 export function LoginPage({ onLogin, role, onRoleChange }) {
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // حالة التحميل الجديدة
   const [formData, setFormData] = useState({ identifier: '', password: '', rememberMe: false });
+
+  // رابط الـ API (تأكد من أنه يطابق مسار مشروع Laravel)
+  const API_URL = 'http://127.0.0.1:8000/api';
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -13,18 +18,70 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const identifier = formData.identifier.toLowerCase();
-    
-    // Simulation du rôle basé sur l'identifiant (comme dans ton code original)
-    if (identifier.includes('clerk') || identifier.includes('كاتب') || identifier.includes('sarah')) {
-      onRoleChange('clerk');
-    } else {
-      onRoleChange('admin'); // par défaut admin
+    setIsLoading(true); // تشغيل أيقونة التحميل
+
+    try {
+      // إرسال الطلب إلى Laravel API
+      const response = await fetch(`${API_URL}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          email: formData.identifier, // نرسل الـ identifier على أنه email ليتوافق مع Laravel
+          password: formData.password
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // 1. حفظ التوكن (Token) في المتصفح لاستخدامه لاحقاً في الطلبات المحمية
+        localStorage.setItem('token', data.access_token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+
+        // 2. تحديد الصلاحية (يمكنك لاحقاً جلبها من قاعدة البيانات data.user.role)
+        const identifier = formData.identifier.toLowerCase();
+        if (identifier.includes('clerk') || identifier.includes('كاتب') || identifier.includes('sarah')) {
+          onRoleChange('clerk');
+        } else {
+          onRoleChange('admin'); // الافتراضي
+        }
+        
+        // 3. إشعار النجاح والدخول
+        Swal.fire({
+          icon: 'success',
+          title: 'مرحباً بك!',
+          text: 'تم تسجيل الدخول بنجاح',
+          timer: 1500,
+          showConfirmButton: false
+        });
+
+        onLogin();
+      } else {
+        // إذا كانت البيانات خاطئة (401 Unauthorized)
+        Swal.fire({
+          icon: 'error',
+          title: 'فشل الدخول',
+          text: data.message || 'البريد الإلكتروني أو كلمة المرور غير صحيحة',
+          confirmButtonColor: '#003366'
+        });
+      }
+    } catch (error) {
+      console.error('Login Error:', error);
+      // إذا كان السيرفر متوقفاً
+      Swal.fire({
+        icon: 'error',
+        title: 'خطأ في الاتصال',
+        text: 'تعذر الاتصال بالسيرفر، تأكد من تشغيل (php artisan serve)',
+        confirmButtonColor: '#003366'
+      });
+    } finally {
+      setIsLoading(false); // إيقاف أيقونة التحميل
     }
-    
-    onLogin();
   };
 
   return (
@@ -32,14 +89,11 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
       {/* Côté Visuel / Marque */}
       <div className="hidden lg:flex w-1/2 relative overflow-hidden bg-[#003366]">
         {/* Arrière-plan */}
-        {/* 1. L'image de fond (J'ai enlevé mix-blend et mis opacity-50) */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30"
-        style={{ backgroundImage: 'url(/tribunal.jpg' }}
-      />
-      
-      {/* 2. Le calque bleu par-dessus (J'ai baissé l'opacité à /70 et /80 au lieu de /90 et /95) */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#003366]/10 to-[#001a33]/20" />
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30"
+          style={{ backgroundImage: 'url(/tribunal.jpg)' }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#003366]/10 to-[#001a33]/20" />
         
         {/* Contenu textuel de l'image */}
         <div className="relative z-10 flex flex-col items-center justify-center w-full h-full text-white p-12 text-center">
@@ -80,14 +134,14 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
                 {/* Champ Identifiant / Email */}
                 <div className="space-y-2">
                   <label className="block text-sm font-bold text-[#0A2540]">
-                    اسم المستخدم
+                    البريد الإلكتروني
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 start-0 flex items-center ps-4 pointer-events-none">
                       <User className="w-5 h-5 text-gray-400" />
                     </div>
                     <input
-                      type="text"
+                      type="email" // تم التغيير لـ email ليتوافق مع API
                       name="identifier"
                       value={formData.identifier}
                       onChange={handleChange}
@@ -153,9 +207,18 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
                 {/* Bouton de soumission */}
                 <button
                   type="submit"
-                  className="w-full bg-[#003366] text-white py-4 px-6 rounded-xl text-lg font-bold hover:bg-[#002244] focus:ring-4 focus:ring-[#003366]/30 transition-all shadow-lg hover:shadow-xl mt-4 flex justify-center items-center gap-2"
+                  disabled={isLoading}
+                  className={`w-full text-white py-4 px-6 rounded-xl text-lg font-bold transition-all shadow-lg flex justify-center items-center gap-2 
+                    ${isLoading ? 'bg-[#002244] opacity-80 cursor-wait' : 'bg-[#003366] hover:bg-[#002244] hover:shadow-xl focus:ring-4 focus:ring-[#003366]/30'}`}
                 >
-                  الدخول للفضاء الخاص
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                      جاري التحقق...
+                    </>
+                  ) : (
+                    'الدخول للفضاء الخاص'
+                  )}
                 </button>
               </form>
             </div>
