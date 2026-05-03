@@ -83,15 +83,16 @@ export function FraisStatsForm() {
     setIsLoading(true);
 
     try {
-      const token = localStorage.getItem('auth_token');
+      // Assure-toi d'utiliser le bon nom de clé pour ton token ('token' ou 'auth_token')
+      const token = localStorage.getItem('token'); 
 
       const response = await fetch('http://127.0.0.1:8000/api/frais-stats', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Accept': 'application/json',
-          // ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-
+          // 👇 LA LIGNE MAGIQUE QUI MANQUAIT 👇
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(formData)
       });
@@ -99,7 +100,9 @@ export function FraisStatsForm() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'حدث خطأ أثناء حفظ البيانات');
+        // On récupère les erreurs de validation Laravel s'il y en a
+        const errorMessage = data.message || 'حدث خطأ أثناء حفظ البيانات';
+        throw new Error(errorMessage);
       }
 
       // 🌟 SweetAlert pour le Succès
@@ -108,7 +111,7 @@ export function FraisStatsForm() {
         title: 'نجاح!',
         text: data.message || 'تم حفظ الإحصائيات بنجاح',
         confirmButtonText: 'حسناً',
-        confirmButtonColor: '#003366', // La couleur de ton thème
+        confirmButtonColor: '#003366', 
         customClass: {
           title: 'font-sans font-bold text-[#003366]',
           popup: 'rounded-2xl',
@@ -122,7 +125,7 @@ export function FraisStatsForm() {
         title: 'خطأ!',
         text: error.message,
         confirmButtonText: 'إغلاق',
-        confirmButtonColor: '#ef4444', // Rouge pour l'erreur
+        confirmButtonColor: '#ef4444', 
         customClass: {
           title: 'font-sans font-bold',
           popup: 'rounded-2xl',

@@ -32,9 +32,16 @@ export function OutstandingDebtsModule() {
   const fetchDebts = async () => {
     try {
       setIsLoading(true);
-      // 👈 MODIFICATION : On ajoute l'année dans l'URL (Query Parameter)
       const url = `http://localhost:8000/api/outstanding-debts?year=${selectedYear}`;
-      const response = await fetch(url);
+      
+      // 👇 التعديل الإجباري هنا 👇
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
       
       if (!response.ok) {
         throw new Error(`Erreur HTTP: ${response.status}`);
@@ -84,10 +91,15 @@ export function OutstandingDebtsModule() {
     });
 
     try {
+      console.log(localStorage.getItem('token'))
       const response = await fetch('http://localhost:8000/api/outstanding-debts/import', {
         method: 'POST',
-        headers: { 'Accept': 'application/json' },
         body: formData,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        
       });
 
       if (!response.ok) {
