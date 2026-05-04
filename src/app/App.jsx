@@ -5,7 +5,7 @@ import { Dashboard } from './components/Dashboard';
 export default function App() {
   // 1. التحقق من وجود التوكن (Token) بدلاً من 'app_current_page'
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     return !!token; // تُرجع true إذا كان التوكن موجوداً، و false إذا لم يكن موجوداً
   });
 
@@ -22,7 +22,7 @@ export default function App() {
   // 3. دالة تسجيل الخروج (Logout) الحقيقية والمربوطة بالـ API
   const handleLogout = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       
       if (token) {
         // إرسال طلب للسيرفر لإبطال (Revoke) التوكن
@@ -38,8 +38,8 @@ export default function App() {
       console.error('Erreur lors de la déconnexion:', error);
     } finally {
       // مسح جميع بيانات الجلسة من المتصفح (حتى لو فشل الاتصال بالسيرفر)
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('user');
       // localStorage.removeItem('app_user_role'); // اختياري إذا أردت مسح الرول أيضاً
       
       // إرجاع المستخدم لصفحة الدخول

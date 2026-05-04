@@ -35,7 +35,7 @@ export function DirectedProcedureModule({ onLogout }) {
   const API_URL = 'http://127.0.0.1:8000/api/procedures';
 
   // دالة مساعدة لجلب التوكن
-  const getToken = () => localStorage.getItem('token');
+  const getToken = () => sessionStorage.getItem('token')
 
   useEffect(() => {
     fetchData();
@@ -326,7 +326,7 @@ const handleDownloadWord = () => {
       let signerName = '.............................................';
       let signerRole = 'كاتب الضبط'; // قيمة افتراضية
 
-      const userStorage = localStorage.getItem('user');
+      const userStorage = sessionStorage.getItem('user');
       if (userStorage) {
         const userData = JSON.parse(userStorage);
         
@@ -365,16 +365,17 @@ const handleDownloadWord = () => {
               margin-top: 10px;
             }
             .right-column { 
-              width: 32%; 
+              width: 35%; 
               vertical-align: top; 
-              border-left: 2px solid #000; 
-              padding-left: 20px; 
+              border-left: 1px solid #000; 
+              padding-left: 15px; 
               text-align: center; 
             }
             .left-column { 
-              width: 68%; 
+              width: 65%; 
               vertical-align: top; 
-              padding-right: 40px; 
+              padding-right: 20px; 
+              text-align: center; /* توسيط محتوى العمود الأيسر */
             }
             p {
               margin: 0;
@@ -387,7 +388,7 @@ const handleDownloadWord = () => {
             <tr>
               <!-- العمود الأيمن (المعلومات الإدارية) -->
               <td class="right-column">
-                <p style="font-size: 14pt; font-weight: bold; line-height: 1.5; margin-bottom: 40px;">
+                <p style="font-size: 14pt; font-weight: bold; line-height: 1.5; margin-bottom: 30px;">
                   المملكة المغربية<br>
                   وزارة العدل<br>
                   محكمة الاستئناف بطنجة<br>
@@ -396,16 +397,16 @@ const handleDownloadWord = () => {
                   المكتب 138 الطابق 2
                 </p>
                 
-                <p style="font-size: 18pt; font-weight: bold; margin-bottom: 10px;">
+                <p style="font-size: 16pt; font-weight: bold; margin-bottom: 5px;">
                   ملف زجري عدد:
                 </p>
-                <p style="font-size: 18pt; font-weight: bold; margin-bottom: 50px;" dir="ltr">
+                <p style="font-size: 16pt; font-weight: bold; margin-bottom: 40px;" dir="ltr">
                   ${printData.fileNumber}
                 </p>
                 
-                <div style="border: 1px solid #000; padding: 15px; text-align: right; margin-top: 20px;">
-                  <p style="text-align: center; font-weight: bold; font-size: 14pt; text-decoration: underline; margin-bottom: 15px;">ملاحظة:</p>
-                  <p style="font-size: 10pt; line-height: 1.6; text-align: justify;">
+                <div style="border: 1px solid #000; padding: 10px; text-align: center; margin-top: 20px;">
+                  <p style="font-weight: bold; font-size: 12pt; text-decoration: underline; margin-bottom: 10px;">ملاحظة:</p>
+                  <p style="font-size: 9pt; line-height: 1.5; text-align: justify; direction: rtl;">
                     طبقا للمقتضى الجديد المنصوص عليه في المادة 1-634 من قانون المسطرة الجنائية: يستفيد المحكوم عليه من <span style="background-color: #d9d9d9; font-weight: bold;">تخفيض الغرامة إلى الثلثين</span> شريطة أداء ما بذمته داخل أجل <span style="background-color: #d9d9d9; font-weight: bold;">30 يوما</span> يحتسب إبتداءا من تاريخ النطق بالأحكام الحضورية، أو من تاريخ تبليغ المقررات القضائية الغيابية أو بمثابة حضورية. كما تجدر الإشارة إلى أن هذا التخفيض لا يشمل باقي أنواع الديون العمومية.
                   </p>
                 </div>
@@ -413,35 +414,37 @@ const handleDownloadWord = () => {
 
               <!-- العمود الأيسر (المحتوى الرئيسي) -->
               <td class="left-column">
-                <p style="font-size: 44pt; font-weight: bold; text-decoration: underline; text-align: center; margin-bottom: 30px; letter-spacing: 1px;">
+                <p style="font-size: 36pt; font-weight: bold; text-decoration: underline; margin-bottom: 20px;">
                   ${printData.documentType}
                 </p>
                 
-                <p style="font-size: 18pt; font-weight: bold; text-align: center; margin-bottom: 60px; line-height: 1.5;">
+                <p style="font-size: 16pt; font-weight: bold; margin-bottom: 40px; line-height: 1.5;">
                   مـن رئيس كتابة الضبط لدى المحكمة<br>الابتدائية بطنجة
                 </p>
                 
-                <p style="font-size: 16pt; font-weight: bold; margin-bottom: 20px;">
-                  إلى الســيد: <span style="font-size: 16pt;">${printData.suspectName}</span>
-                </p>
+                <div style="text-align: right; margin-bottom: 40px;">
+                  <p style="font-size: 14pt; font-weight: bold; margin-bottom: 15px;">
+                    إلى الســيد: <span style="font-size: 14pt;">${printData.suspectName}</span>
+                  </p>
+                  
+                  <p style="font-size: 14pt; font-weight: bold; line-height: 1.6;">
+                    السـاكن بـ: <span style="font-size: 14pt;">${printData.address.replace(/\n/g, ' ')}</span>
+                  </p>
+                </div>
                 
-                <p style="font-size: 16pt; font-weight: bold; margin-bottom: 60px; line-height: 1.6;">
-                  السـاكن بـ: <span style="font-size: 16pt;">${printData.address.replace(/\n/g, ' ')}</span>
-                </p>
-                
-                <p style="font-size: 18pt; font-weight: bold; line-height: 2; text-align: right; margin-bottom: 70px;">
+                <p style="font-size: 14pt; font-weight: bold; line-height: 1.8; text-align: center; margin-bottom: 40px;">
                   ${formattedMainText}
                 </p>
                 
-                <p style="font-size: 16pt; font-weight: bold; margin-bottom: 25px;">
+                <p style="font-size: 14pt; font-weight: bold; margin-bottom: 20px; text-align: center;">
                   حرر بطنجة في: ${printData.issueDate}
                 </p>
                 
-                <!-- التعديل هنا: دمج اسم الموظف المتصل وصفته -->
-                <p style="font-size: 16pt; font-weight: bold; line-height: 1.5;">
-                  عن رئيس مصلحة كتابة الضبط<br>
+                <!-- التوقيع -->
+                <p style="font-size: 14pt; font-weight: bold; line-height: 1.5; text-align: center;">
+                  عن رئيس مصلحة كتابة الضبط<br><br>
                   ${signerName}<br>
-                  <span style="font-size: 12pt; font-weight: normal; color: #333;">${signerRole}</span>
+                  <span style="font-size: 12pt; font-weight: normal;">${signerRole}</span>
                 </p>
               </td>
             </tr>

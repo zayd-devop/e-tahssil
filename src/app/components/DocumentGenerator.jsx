@@ -92,10 +92,16 @@ export function DocumentGenerator() {
     dossier_recouvrement: { label: 'رقم ملف التحصيل', type: 'text', placeholder: 'مثال: 123/2026' },
     financial_year: { label: 'السنة المالية', type: 'text', placeholder: 'مثال: 2026' },
     order_num: { label: 'رقم الأمر بالدفع', type: 'text', placeholder: 'رقم الترتيب...' },
+    
     judgment_type: { 
       label: 'وصف الحكم', 
       type: 'select', 
       options: ['حضوري', 'غيابي', 'بمثابة حضوري'] 
+    },
+    decision_type: { 
+      label: 'سند التحصيل (المقرر أو السند)', 
+      type: 'select', 
+      options: ['المقرر القضائي', 'السند التنفيذي'] 
     },
     case_type: { 
       label: 'نوع الملف', 
@@ -104,6 +110,30 @@ export function DocumentGenerator() {
     },
     amende_amount: { label: 'مبلغ الغرامة الأصلية (درهم)', type: 'number', placeholder: '0.00' },
     frais_amount: { label: 'مبلغ الصوائر القضائية (درهم)', type: 'number', placeholder: '0.00' },
+    statement_num: { 
+      label: 'بيان التكفلات رقم', 
+      type: 'text', 
+      placeholder: 'مثال: 45/2026' 
+    },
+    notification_date: { 
+      label: 'تاريخ التبليغ', 
+      type: 'date' 
+    },
+    // 👇 Champs pour مراجع الأداء (Références de paiement)
+    receipt_num: { 
+      label: 'رقم وصل الأداء (إن وجد)', 
+      type: 'text', 
+      placeholder: 'مثال: 123456' 
+    },
+    receipt_date: { 
+      label: 'تاريخ وصل الأداء', 
+      type: 'date' // Le type "date" affichera un joli calendrier
+    },
+    receipt_amount: { 
+      label: 'مبلغ الوصل (درهم)', 
+      type: 'number', 
+      placeholder: '0.00' 
+    },
   };
 
   // --- 3. CONFIGURATION DES DOCUMENTS ---
@@ -132,7 +162,7 @@ export function DocumentGenerator() {
     
     // On préparera la catégorie 3 plus tard...
     'pv_carence': { title: 'محضر عدم امكانية التنفيذ على أموال المدين', fields: ['judgment_num', 'judgment_date', 'warning_date'] },
-    'mortgage': { title: 'الرهن الجبري', 
+    'rahn_jabri': { title: 'الرهن الجبري', 
       fields: ['conservation_fonciere', 'titre_foncier', 'debt_amount_letters'],
     },
     'atd': { title: 'إشعار الغير الحائز', fields: ['atd_destinataire', 'judgment_num', 'judgment_date', 'warning_date', 'debtor_bank_accounts'] },
@@ -142,13 +172,19 @@ export function DocumentGenerator() {
         'order_num', 
         'financial_year', 
         'dossier_recouvrement', 
+        'statement_num',
         'case_type',
         'judgment_type',
+        'decision_type',
         'judgment_num', 
         'judgment_date', 
+        'notification_date',
         'amende_amount', 
         'frais_amount', 
-        'debt_amount_letters'
+        'debt_amount_letters',
+        'receipt_num',
+        'receipt_date',
+        'receipt_amount'
       ] 
     },
   };
@@ -171,7 +207,7 @@ export function DocumentGenerator() {
     { id: 'execution', title: 'إجراءات التنفيذ الجبري', icon: <Gavel className="w-5 h-5" />, 
       docs: [
         { id: 'pv_carence', title: 'محضر عدم امكانية التنفيذ على أموال المدين' }, 
-        { id: 'mortgage', title: 'الرهن الجبري' },
+        { id: 'rahn_jabri', title: 'الرهن الجبري' },
         { id: 'atd', title: 'إشعار الغير الحائز' },
         { id: 'payment_order', title: 'نموذج أمر بالدفع' },
       ] }
@@ -254,8 +290,26 @@ export function DocumentGenerator() {
       const a = document.createElement('a');
       a.href = url;
       
+      // 1. Tu crées ton dictionnaire des noms de fichiers
+      const arabicNames = {
+        'payment_order': 'أمر_بالدفع',
+        'rahn_jabri': 'الرهن_الجبري',
+        'atd': 'إشعار_للغير_الحائز',
+        'pv_carence': 'محضر_عدم_الإمكانية',
+        'info_request': 'طلب_حق_الاطلاع',
+        'car_opp_declare': 'تصريح_بالتعرض_لدى_مركز_تسجيل_السيارات',
+        'car_opp_renew': 'تجديد_التصريح_بالتعرض_لدى_مركز_تسجيل_السيارات',
+        'car_opp_lift': 'رفع_اليد_عن_التعرض_لدى_مركز_تسجيل_السيارات',
+      };
+
+      // 2. Si le nom existe dans le dictionnaire, on le prend, sinon on garde l'activeDoc par défaut
+      const docName = arabicNames[activeDoc] || activeDoc;
+
+      // 3. Sécurisation du numéro de dossier
       const safeDossierNum = generalData.dossierNum.replace(/\//g, '-');
-      a.download = `${activeDoc}_${safeDossierNum}.docx`; 
+
+// 4. Affectation du nom
+a.download = `${docName}_${safeDossierNum}.docx`;
       
       document.body.appendChild(a);
       a.click();
@@ -266,7 +320,7 @@ export function DocumentGenerator() {
       // 👇 SWEETALERT DE SUCCÈS 👇
       Swal.fire({
         title: 'تم بنجاح!',
-        text: 'تم توليد المستند وتحميله بنجاح.',
+        text: 'تم تحميل الوثيقة بنجاح.', 
         icon: 'success',
         confirmButtonColor: '#003366', // La couleur bleue de ton thème
         confirmButtonText: 'حسناً',
