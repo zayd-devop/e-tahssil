@@ -6,6 +6,7 @@ export function DocumentGenerator() {
   const [activeCategory, setActiveCategory] = useState('vehicles');
   const [activeDoc, setActiveDoc] = useState(null); // On met ton document par défaut
   const [showHistory, setShowHistory] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [foldersHistory, setFoldersHistory] = useState([]); 
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -33,13 +34,13 @@ export function DocumentGenerator() {
     narsa_center: { label: 'مركز تسجيل السيارات (المدينة)', type: 'text', placeholder: 'مثال: طنجة' },
     vehicle_type: { label: 'نوع السيارة (العلامة)', type: 'text', placeholder: 'مثال: Dacia Logan' },
     vehicle_color: { label: 'لون السيارة', type: 'text', placeholder: 'مثال: أبيض' },
-    vehicle_reg: { label: 'رقم التسجيل (الماتريكول)', type: 'text', placeholder: 'مثال: 12345 | أ | 1' },
+    vehicle_reg: { label: 'رقم التسجيل (الماتريكول)', type: 'text', placeholder: 'مثال: 12345 - أ - 40' },
     decision_num: { label: 'رقم المقرر القضائي', type: 'text', placeholder: 'مثال: 45/2026' },
     decision_date: { label: 'تاريخ المقرر القضائي', type: 'date' },
     notification_method: { 
       label: 'طريقة التبليغ', 
       type: 'select', 
-      options: ['عن طريق المفوض القضائي', 'عن طريق البريد المضمون', 'بالطريق الإداري'] 
+      options: ['عن طريق المفوض القضائي', 'عن طريق البريد المضمون', 'بالطريقة الادارية'] 
     },
     old_declaration_date: { label: 'تاريخ التصريح الأول (المراد تجديده)', type: 'date' },
 
@@ -134,6 +135,16 @@ export function DocumentGenerator() {
       type: 'number', 
       placeholder: '0.00' 
     },
+    extract_num: { 
+      label: 'رقم مستخرج الحكم ', 
+      type: 'text', 
+      placeholder: 'مثال: 125 / 12 / 2026',
+      dir: 'ltr' // Pour que les slashes s'affichent dans le bon sens
+    },
+    extract_date: { 
+      label: 'تاريخ مستخرج الحكم ', 
+      type: 'date' 
+    },
   };
 
   // --- 3. CONFIGURATION DES DOCUMENTS ---
@@ -141,23 +152,23 @@ export function DocumentGenerator() {
     'car_opp_declare': {
       title: 'نموذج تصريح بمثابة تعرض لدى مركز تسجيل السيارات',
       // On liste ici les IDs des champs dont ce document a besoin :
-      fields: ['narsa_center', 'vehicle_type', 'vehicle_color', 'vehicle_reg', 'decision_num', 'decision_date', 'notification_method']
+      fields: ['dossier_recouvrement','narsa_center', 'vehicle_type', 'vehicle_color', 'vehicle_reg', 'decision_num', 'decision_date', 'notification_method', 'extract_num', 'extract_date']
     },
     // Les autres documents seront ajoutés ici plus tard...
     'car_opp_renew': { 
       title: 'نموذج تجديد التصريح بالتعرض لدى مركز تسجيل السيارات', 
       // Remarque : on réutilise les anciens champs, on ajoute la nouvelle date, et on enlève la méthode de notification !
-      fields: ['decision_num', 'decision_date', 'narsa_center', 'old_declaration_date', 'vehicle_type', 'vehicle_color', 'vehicle_reg'] 
+      fields: ['dossier_recouvrement','decision_num', 'decision_date', 'narsa_center', 'old_declaration_date', 'vehicle_type', 'vehicle_color', 'vehicle_reg', 'extract_num', 'extract_date'] 
     },
     
     'car_opp_lift': { 
       title: 'نموذج رفع اليد عن التعرض لدى مركز تسجيل السيارات', 
-      fields: ['decision_num', 'decision_date', 'narsa_center', 'old_declaration_date', 'vehicle_type', 'vehicle_color', 'vehicle_reg', 'notification_method'] 
+      fields: ['dossier_recouvrement','decision_num', 'decision_date', 'narsa_center', 'old_declaration_date', 'vehicle_type', 'vehicle_color', 'vehicle_reg', 'notification_method', 'extract_num', 'extract_date'] 
     },
 
     'info_request': {
       title: 'نموذج طلب حق الاطلاع (مؤسسات مختلفة)',
-      fields: ['destinataire_name', 'requested_info']
+      fields: ['dossier_recouvrement','destinataire_name', 'requested_info']
     },
     
     // On préparera la catégorie 3 plus tard...
@@ -223,6 +234,17 @@ export function DocumentGenerator() {
 
   const handleGeneralChange = (e) => setGeneralData({ ...generalData, [e.target.name]: e.target.value });
   const handleSpecificChange = (e) => setSpecificData({ ...specificData, [e.target.name]: e.target.value });
+
+  const arabicNames = {
+  'payment_order': 'أمر_بالدفع',
+  'rahn_jabri': 'الرهن_الجبري',
+  'atd': 'إشعار_للغير_الحائز',
+  'pv_carence': 'محضر_عدم_الإمكانية',
+  'info_request': 'طلب_حق_الاطلاع',
+  'car_opp_declare': 'تصريح_بالتعرض_لدى_مركز_تسجيل_السيارات',
+  'car_opp_renew': 'تجديد_التصريح_بالتعرض_لدى_مركز_تسجيل_السيارات',
+  'car_opp_lift': 'رفع_اليد_عن_التعرض_لدى_مركز_تسجيل_السيارات',
+};
 
   const handleGenerate = async (e) => {
     e.preventDefault();
@@ -352,20 +374,33 @@ a.download = `${docName}_${safeDossierNum}.docx`;
       const fetchHistory = async () => {
         setIsLoadingHistory(true);
         try {
-          // On ajoute ?page= au lien de l'API
-          const response = await fetch(`http://127.0.0.1:8000/api/folders?page=${currentPage}`);
+          // 1. Récupère ton token d'authentification (adapte cette ligne selon l'endroit où tu le stockes, par exemple localStorage)
+          const token = localStorage.getItem('token'); 
+
+          // 2. On ajoute les Headers à la requête fetch
+          const response = await fetch(`http://127.0.0.1:8000/api/folders?page=${currentPage}`, {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json',        // 👈 Empêche l'erreur "Route login not defined"
+              'Authorization': `Bearer ${token}`   // 👈 Prouve à Laravel que tu es connecté
+            }
+          });
+
           if (response.ok) {
             const result = await response.json();
             
-            // Attention : avec paginate(), les dossiers sont dans result.data
             setFoldersHistory(result.data); 
             
-            // On sauvegarde les informations de pagination
             setPaginationMeta({
               current_page: result.current_page,
               last_page: result.last_page,
               total: result.total
             });
+          } else if (response.status === 401) {
+            console.error("Erreur 401 : Non autorisé. Le token est manquant ou expiré.");
+            // Tu pourras ajouter ici une redirection vers ta page de connexion si le token a expiré
+          } else {
+            console.error("Erreur du serveur :", response.status);
           }
         } catch (error) {
           console.error("Erreur API :", error);
@@ -389,6 +424,14 @@ a.download = `${docName}_${safeDossierNum}.docx`;
     });
     setShowHistory(false); // On ferme la modale
   };
+
+  // On filtre les dossiers affichés en fonction de la recherche (Nom ou Numéro de dossier)
+const filteredFolders = foldersHistory.filter((folder) => {
+  const matchDossier = folder.dossier_num?.toLowerCase().includes(searchQuery.toLowerCase());
+  const matchName = folder.debtor_name?.toLowerCase().includes(searchQuery.toLowerCase());
+  
+  return matchDossier || matchName;
+});
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 max-w-6xl mx-auto mt-6 font-sans" dir="rtl">
       
@@ -605,96 +648,64 @@ a.download = `${docName}_${safeDossierNum}.docx`;
             </div>
 
             {/* Contenu : Le Tableau */}
-            <div className="p-6 overflow-y-auto flex-1">
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <table className="w-full text-right border-collapse">
-                  <thead className="bg-[#003366] text-white">
-                    <tr>
-                      <th className="p-4 font-semibold text-sm">رقم الملف</th>
-                      <th className="p-4 font-semibold text-sm">الاسم الكامل للمدين</th>
-                      <th className="p-4 font-semibold text-sm">رقم ب.ت.و</th>
-                      <th className="p-4 font-semibold text-sm">المبلغ المستحق</th>
-                      <th className="p-4 font-semibold text-sm">تاريخ الإضافة</th>
-                      <th className="p-4 font-semibold text-sm text-center">إجراء</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-gray-700">
-                    
-                    {isLoadingHistory ? (
-                      /* Affichage pendant le chargement */
-                      <tr>
-                        <td colSpan="6" className="p-8 text-center text-gray-500 font-medium">
-                          <div className="flex items-center justify-center gap-3">
-                            <div className="w-5 h-5 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
-                            جاري تحميل البيانات...
-                          </div>
-                        </td>
-                      </tr>
-                    ) : foldersHistory.length === 0 ? (
-                      /* Affichage si la base de données est vide */
-                      <tr>
-                        <td colSpan="6" className="p-8 text-center text-gray-500">
-                          لا توجد ملفات محفوظة حاليا في قاعدة البيانات.
-                        </td>
-                      </tr>
-                    ) : (
-                      /* Affichage des vraies données de Laravel */
-                      foldersHistory.map((folder) => (
-                        <tr key={folder.id} className="border-b border-gray-100 hover:bg-blue-50/50 transition-colors">
-                          <td className="p-4 font-bold text-[#003366]">{folder.dossier_num}</td>
-                          <td className="p-4">{folder.debtor_name}</td>
-                          <td className="p-4 text-gray-500">{folder.debtor_cin || '-'}</td>
-                          <td className="p-4 font-bold text-red-600">{folder.debt_amount} درهم</td>
-                          <td className="p-4 text-sm text-gray-500">
-                            {/* Formater la date proprement */}
-                            {new Date(folder.created_at).toLocaleDateString('fr-FR')}
-                          </td>
-                          <td className="p-4 text-center">
-                            <button 
-                              onClick={() => handleRestoreFolder(folder)}
-                              className="text-sm text-[#D4AF37] hover:text-[#003366] font-bold px-3 py-1 bg-[#D4AF37]/10 hover:bg-[#D4AF37]/20 rounded-lg transition-colors"
-                            >
-                              استرجاع
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
+            {/* --- Barre de Recherche --- */}
+<div className="m-3">
+  <input
+    type="text"
+    placeholder="البحث برقم ملف التحصيل أو اسم المدين..."
+    value={searchQuery}
+    onChange={(e) => setSearchQuery(e.target.value)}
+    dir="rtl"
+    className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#003366]"
+  />
+</div>
 
-                  </tbody>
-                </table>
-                {/* Pagination (Affichée seulement si on a des données) */}
-              {paginationMeta && paginationMeta.last_page > 1 && (
-                <div className="mt-4 p-4 border border-gray-200 rounded-xl bg-gray-50 flex items-center justify-between">
-                  <div className="text-sm text-gray-500">
-                    إجمالي الملفات: <span className="font-bold text-[#003366]">{paginationMeta.total}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      السابق
-                    </button>
-                    
-                    <span className="text-sm font-bold text-[#003366]">
-                      الصفحة {paginationMeta.current_page} من {paginationMeta.last_page}
-                    </span>
-                    
-                    <button
-                      onClick={() => setCurrentPage(p => Math.min(paginationMeta.last_page, p + 1))}
-                      disabled={currentPage === paginationMeta.last_page}
-                      className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      التالي
-                    </button>
-                  </div>
-                </div>
-              )}
-              </div>
-            </div>
+{/* --- Tableau --- */}
+<div className="overflow-x-auto m-3">
+  <table className="w-full text-right" dir="rtl">
+    <thead>
+      <tr className="bg-[#003366] text-white rounded-t-lg">
+        <th className="p-4 font-medium">رقم الملف</th>
+        <th className="p-4 font-medium">الاسم الكامل للمدين</th>
+        <th className="p-4 font-medium">رقم ب.ت.و</th>
+        <th className="p-4 font-medium">المبلغ المستحق</th>
+        <th className="p-4 font-medium">تاريخ المراسلة</th>
+        <th className="p-4 font-medium">نوع المراسلة</th> {/* 👈 Nouvelle colonne */}
+      </tr>
+    </thead>
+    <tbody>
+      {filteredFolders.length === 0 ? (
+        <tr>
+          <td colSpan="6" className="p-8 text-center text-gray-500">
+            لا توجد ملفات مطابقة للبحث.
+          </td>
+        </tr>
+      ) : (
+        filteredFolders.map((folder) => (
+          <tr key={folder.id} className="border-b border-gray-100 hover:bg-blue-50/50 transition-colors">
+            <td className="p-4 font-bold text-[#003366]">{folder.dossier_num}</td>
+            <td className="p-4">{folder.debtor_name}</td>
+            <td className="p-4 text-gray-500">{folder.debtor_cin || '-'}</td>
+            <td className="p-4 font-bold text-red-600">{folder.debt_amount} درهم</td>
+            
+            {/* Date de la correspondance */}
+            <td className="p-4 text-sm text-gray-500">
+              {new Date(folder.created_at).toLocaleDateString('fr-FR')}
+            </td>
+
+            {/* Type de correspondance (nécessite une modification côté Laravel pour être dynamique) */}
+            {/* Type de correspondance */}
+            <td className="p-4 font-bold text-[#D4AF37]">
+              {arabicNames[folder.document_type] 
+                ? arabicNames[folder.document_type].replace(/_/g, ' ') 
+                : folder.document_type}
+            </td>
+          </tr>
+        ))
+      )}
+    </tbody>
+  </table>
+</div>
 
           </div>
         </div>
