@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Save, Calendar, BarChart3, FileText, Scale, FileSpreadsheet, Calculator, ScrollText, Loader2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Save, Calendar, BarChart3, FileText, Scale, FileSpreadsheet, Calculator, ScrollText, Loader2, CheckCircle2, AlertCircle, ChevronDown } from 'lucide-react';
 import Swal from 'sweetalert2'; // 👈 Import de SweetAlert2
 
 export function FraisStatsForm() {
@@ -24,6 +24,24 @@ export function FraisStatsForm() {
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState({ text: '', type: '' });
+  // États pour le sélecteur d'année personnalisé
+  const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Générer une liste d'années
+  const availableYears = Array.from({ length: 27 }, (_, i) => (2026 - i).toString());
+
+  // Fermer le menu déroulant si on clique en dehors
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsYearDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Textes en arabe uniquement
   const t = {
@@ -53,21 +71,28 @@ export function FraisStatsForm() {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
+  
+  const handleYearSelect = (year) => {
+    setFormData(prev => ({ ...prev, year: year }));
+    setIsYearDropdownOpen(false);
+    if (message.text) setMessage({ text: '', type: '' });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const token = localStorage.getItem('auth_token');
+      // Assure-toi d'utiliser le bon nom de clé pour ton token ('token' ou 'auth_token')
+      const token = sessionStorage.getItem('token'); 
 
       const response = await fetch('http://127.0.0.1:8000/api/frais-stats', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Accept': 'application/json',
-          // ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-          
+          // 👇 LA LIGNE MAGIQUE QUI MANQUAIT 👇
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(formData)
       });
@@ -75,7 +100,9 @@ export function FraisStatsForm() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'حدث خطأ أثناء حفظ البيانات');
+        // On récupère les erreurs de validation Laravel s'il y en a
+        const errorMessage = data.message || 'حدث خطأ أثناء حفظ البيانات';
+        throw new Error(errorMessage);
       }
 
       // 🌟 SweetAlert pour le Succès
@@ -84,7 +111,7 @@ export function FraisStatsForm() {
         title: 'نجاح!',
         text: data.message || 'تم حفظ الإحصائيات بنجاح',
         confirmButtonText: 'حسناً',
-        confirmButtonColor: '#003366', // La couleur de ton thème
+        confirmButtonColor: '#003366', 
         customClass: {
           title: 'font-sans font-bold text-[#003366]',
           popup: 'rounded-2xl',
@@ -98,7 +125,7 @@ export function FraisStatsForm() {
         title: 'خطأ!',
         text: error.message,
         confirmButtonText: 'إغلاق',
-        confirmButtonColor: '#ef4444', // Rouge pour l'erreur
+        confirmButtonColor: '#ef4444', 
         customClass: {
           title: 'font-sans font-bold',
           popup: 'rounded-2xl',
@@ -188,10 +215,44 @@ export function FraisStatsForm() {
             </div>
             <div>
               <label className={labelClassName}>{t.year}</label>
-              <select name="year" value={formData.year} onChange={handleChange} className={inputClassName} required>
-                <option value="2025">2025</option>
-                <option value="2026">2026</option>
-              </select>
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  type="button" // Important pour ne pas soumettre le formulaire
+                  onClick={() => !isLoading && setIsYearDropdownOpen(!isYearDropdownOpen)}
+                  disabled={isLoading}
+                  className={`${inputClassName} flex items-center justify-between cursor-pointer ${
+                    isYearDropdownOpen 
+                      ? 'border-[#D4AF37] ring-2 ring-[#D4AF37]/20 text-[#003366]' 
+                      : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                  } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-[#003366]">{formData.year}</span>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isYearDropdownOpen ? 'rotate-180 text-[#D4AF37]' : 'text-gray-400'}`} />
+                </button>
+
+                {isYearDropdownOpen && (
+                  <div className="absolute top-full right-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden">
+                    <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                      {availableYears.map((year) => (
+                        <button
+                          type="button"
+                          key={year}
+                          onClick={() => handleYearSelect(year)}
+                          className={`w-full text-right px-4 py-2.5 transition-colors text-sm font-semibold border-b border-gray-50 last:border-none ${
+                            formData.year === year
+                              ? 'bg-[#003366] text-white' // 👈 L'année sélectionnée (Fond bleu foncé)
+                                : 'text-gray-700 hover:bg-blue-100 hover:text-[#003366]' // 👈 Le survol (Fond bleu clair + texte bleu foncé)
+                          }`}
+                        >
+                          {year}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -22,7 +22,7 @@ export default function App() {
   // 3. دالة تسجيل الخروج (Logout) الحقيقية والمربوطة بالـ API
   const handleLogout = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       
       if (token) {
         // إرسال طلب للسيرفر لإبطال (Revoke) التوكن

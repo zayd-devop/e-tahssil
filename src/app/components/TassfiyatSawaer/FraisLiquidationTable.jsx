@@ -55,10 +55,10 @@ export function FraisLiquidationTable() {
     setIsLoading(true);
     try {
       const response = await fetch(`http://127.0.0.1:8000/api/frais-stats?year=${year}`, {
-        headers: {
-          'Content-Type': 'application/json',
+        headers: { 
           'Accept': 'application/json',
-        }
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
       });
 
       if (!response.ok) throw new Error('فشل في جلب البيانات');
