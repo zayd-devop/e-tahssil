@@ -13,7 +13,7 @@ export function TopBar({ onNotificationClick, onLogout, role, onRoleChange }) {
   });
 
   useEffect(() => {
-    const userStorage = localStorage.getItem('user');
+    const userStorage = sessionStorage.getItem('user');
     if (userStorage) {
       const userData = JSON.parse(userStorage);
       

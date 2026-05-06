@@ -40,8 +40,8 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
 
       if (response.ok) {
         // 1. حفظ التوكن (Token) في المتصفح لاستخدامه لاحقاً في الطلبات المحمية
-        localStorage.setItem('token', data.access_token);
-        localStorage.setItem('user', JSON.stringify(data.user));
+        sessionStorage.setItem('token', data.access_token);
+        sessionStorage.setItem('user', JSON.stringify(data.user));
 
         // 2. تحديد الصلاحية (يمكنك لاحقاً جلبها من قاعدة البيانات data.user.role)
         const identifier = formData.identifier.toLowerCase();

@@ -14,6 +14,7 @@ import { RegistryOfExtracts } from './RegistryOfExtracts';
 import { OutstandingDebtsModule } from './OutstandingDebtsModule';
 import { UserManagementModule } from './UserManagementModule';
 import DirectedProcedureModule from './DirectedProcedureModule';
+import CorrespondencesModule from './CorrespondencesModule';
 
 export function Dashboard({ onLogout, initialRole = 'admin' }) {
   const [role, setRole] = useState(initialRole);
@@ -103,6 +104,8 @@ export function Dashboard({ onLogout, initialRole = 'admin' }) {
           {activeMenu === 'outstanding' && <OutstandingDebtsModule />}
 
           {activeMenu === 'directed' && <DirectedProcedureModule />}
+
+          {activeMenu === 'correspondences' && <CorrespondencesModule />}
 
           {/* {activeMenu === 'recouvrement' && <RecouvrementForm />}
           
