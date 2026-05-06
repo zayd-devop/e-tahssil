@@ -40,7 +40,8 @@ export default function App() {
       // مسح جميع بيانات الجلسة من المتصفح (حتى لو فشل الاتصال بالسيرفر)
       sessionStorage.removeItem('token');
       sessionStorage.removeItem('user');
-      // sessionStorage.removeItem('app_user_role'); // اختياري إذا أردت مسح الرول أيضاً
+      sessionStorage.removeItem('app_user_role'); // اختياري إذا أردت مسح الرول أيضاً
+      // localStorage.removeItem('app_user_role'); // اختياري إذا أردت مسح الرول أيضاً
       
       // إرجاع المستخدم لصفحة الدخول
       setIsAuthenticated(false);
