@@ -12,24 +12,24 @@ export default function CorrespondencesModule() {
   const [isLoadingArchive, setIsLoadingArchive] = useState(false);
   
   // State for dynamic supervision inputs
-  const [recipientSupervisors, setRecipientSupervisors] = useState(['والـــــــي جهة طــــنجة تطـــــوان الحسيمة عـــــامل عمالة طنجة أصيلة']);
+  const [recipientSupervisors, setRecipientSupervisors] = useState([]);
   
   // معلومات المرسل
   const [senderInfo, setSenderInfo] = useState({
-    from: 'رئيسة وحدة التبليغ والتحصيل بالمحكمة الابتدائية بطنجة',
-    registrationNumber: '15/2025' 
+    from: '',
+    registrationNumber: '' 
   });
 
   // معلومات المرسل إليه
   const [recipientInfo, setRecipientInfo] = useState({
-    to: 'الباشا رئيس الدائرة الحضرية طنجة المدينة',
+    to: '',
   });
   
   // معلومات الجدول
   const [tableInfo, setTableInfo] = useState({
-    subject: 'تجدون رفقته طيات التبليغ المتعلق بالملفات التالية:\n399/2409/2024\n456/2408/2024',
-    attachmentsCount: 0,
-    notes: 'يشرفني أن أحيل عليكم ما ذكر يمنته قصد التفضل بإعطاء تعليماتكم لمن يجب للقيام بتبليغ الطيات وإرجاع شواهد التسليم. مضمنة بتاريخ التبليغ و هوية المتسلم .\nوفي حالة الوفاة ارفاق شواهد التسليم بنسخة موجزة من رسم الوفاة قصد استكمال باقي الإجراءات القانونية.\nوتقبلوا فائق التقدير والإحترام\nوالسلام'
+    subject: '',
+    attachmentsCount: '',
+    notes: ''
   });
 
   const addSupervisor = () => {
