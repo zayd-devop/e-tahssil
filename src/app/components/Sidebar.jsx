@@ -8,7 +8,8 @@ import {
   BookOpen, 
   FileSignature,
   FileSpreadsheet,
-  Users
+  Users,
+  Gavel
 } from 'lucide-react';
 
 export function Sidebar({ activeMenu, onMenuChange, role }) {
@@ -16,6 +17,7 @@ export function Sidebar({ activeMenu, onMenuChange, role }) {
     { id: 'bureau', icon: LayoutDashboard, label: 'لوحة القيادة', adminOnly: true },
     { id: 'production', icon: ClipboardList, label: 'بطائق الإنتاج' },
     { id: 'directed', icon: FileSpreadsheet, label: 'إجراء يوجه' },
+    { id: 'hearing', icon: Gavel, label: 'محضر الجلسة'},
     { id: 'outstanding', icon: BookOpen, label: 'الباقي بدون تحصيل' },
     // { id: 'notification', icon: Bell, label: 'تبليغ المقررات' },
     // { id: 'recouvrement', icon: Wallet, label: 'التحصيل' },

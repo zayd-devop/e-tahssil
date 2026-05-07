@@ -14,6 +14,8 @@ import { RegistryOfExtracts } from './RegistryOfExtracts';
 import { OutstandingDebtsModule } from './OutstandingDebtsModule';
 import { UserManagementModule } from './UserManagementModule';
 import DirectedProcedureModule from './DirectedProcedureModule';
+import HearingMinutesModule from '../HearingMinutesModule';
+
 
 export function Dashboard({ onLogout, initialRole = 'admin' }) {
   const [role, setRole] = useState(initialRole);
@@ -101,6 +103,8 @@ export function Dashboard({ onLogout, initialRole = 'admin' }) {
           {activeMenu === 'documents' && <DocumentGenerator />}
 
           {activeMenu === 'outstanding' && <OutstandingDebtsModule />}
+
+          {activeMenu === 'hearing' && <HearingMinutesModule />}
 
           {activeMenu === 'directed' && <DirectedProcedureModule />}
 
