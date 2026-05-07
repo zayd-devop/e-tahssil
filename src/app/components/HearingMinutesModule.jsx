@@ -280,7 +280,7 @@ export default function HearingMinutesModule() {
 
               <button onClick={() => fileInputRef.current.click()} className="flex items-center gap-2 px-5 py-2.5 bg-[#003366] text-white rounded-xl font-bold hover:bg-[#002244] shadow-md transition-all">
                 <FilePlus2 className="w-5 h-5 text-[#D4AF37]" />
-                <span>استيراد ملف Excel</span>
+                <span> سجل الأحكام </span>
               </button>
             </div>
           </div>
