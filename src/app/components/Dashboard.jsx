@@ -15,6 +15,7 @@ import { OutstandingDebtsModule } from './OutstandingDebtsModule';
 import { UserManagementModule } from './UserManagementModule';
 import DirectedProcedureModule from './DirectedProcedureModule';
 import CorrespondencesModule from './CorrespondencesModule';
+import HearingMinutesModule from './HearingMinutesModule';
 
 export function Dashboard({ onLogout, initialRole = 'admin' }) {
   const [role, setRole] = useState(initialRole);
@@ -106,6 +107,8 @@ export function Dashboard({ onLogout, initialRole = 'admin' }) {
           {activeMenu === 'directed' && <DirectedProcedureModule />}
 
           {activeMenu === 'correspondences' && <CorrespondencesModule />}
+
+          {activeMenu === 'hearing' && <HearingMinutesModule />}
 
           {/* {activeMenu === 'recouvrement' && <RecouvrementForm />}
           

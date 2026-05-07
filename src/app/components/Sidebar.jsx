@@ -9,13 +9,15 @@ import {
   FileSignature,
   FileSpreadsheet,
   Users,
-  Send
+  Send,
+  Gavel
 } from 'lucide-react';
 
 export function Sidebar({ activeMenu, onMenuChange, role }) {
   const menuItems = [
     { id: 'bureau', icon: LayoutDashboard, label: 'لوحة القيادة', adminOnly: true },
     { id: 'production', icon: ClipboardList, label: 'بطائق الإنتاج' },
+    { id: 'hearing', icon: Gavel, label: 'محضر الجلسة' },
     { id: 'directed', icon: FileSpreadsheet, label: 'إجراء يوجه' },
     { id: 'correspondences', icon: Send, label: 'المراسلات'},
     { id: 'outstanding', icon: BookOpen, label: 'الباقي بدون تحصيل' },
