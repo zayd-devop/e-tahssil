@@ -20,6 +20,7 @@ export default function HearingMinutesModule() {
   const [dateFilter, setDateFilter] = useState(''); 
   const [isLoading, setIsLoading] = useState(true);
   
+  
   // --- إضافة: حالة التحديد المتعدد ---
   const [selectedIds, setSelectedIds] = useState([]);
   
@@ -27,6 +28,7 @@ export default function HearingMinutesModule() {
   const itemsPerPage = 25;
 
   const fileInputRef = useRef(null);
+  const generalRegisterRef = useRef(null);
 
   useEffect(() => {
     fetchData();
@@ -144,6 +146,42 @@ export default function HearingMinutesModule() {
     }
   };
 
+ const handleGeneralRegisterUpload = async (e) => {
+    e.preventDefault();
+    let file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    Swal.fire({
+      title: 'جاري حفظ السجل العام...',
+      allowOutsideClick: false,
+      didOpen: () => { Swal.showLoading(); }
+    });
+
+    try {
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      const response = await fetch('http://127.0.0.1:8000/api/general-register/import', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+        body: formData
+      });
+
+      if (!response.ok) throw new Error();
+
+      Swal.fire({ icon: 'success', title: 'تم الحفظ بنجاح', timer: 2000, showConfirmButton: false });
+      
+      // 🔥 LA CLÉ EST ICI : On recharge le tableau pour que 'index' fasse la liaison !
+      fetchData(); 
+
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'خطأ', text: 'فشل حفظ الملف' });
+    } finally {
+      if (generalRegisterRef.current) generalRegisterRef.current.value = '';
+    }
+  };
+
   const handleMergedPrint = async () => {
     if (selectedIds.length === 0) return;
     
@@ -240,6 +278,9 @@ export default function HearingMinutesModule() {
 
         <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} />
 
+{/* Input caché 2 : Pour السجل العام */}
+<input type="file" ref={generalRegisterRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleGeneralRegisterUpload} />
+
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
           
           <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-white flex-wrap gap-4">
@@ -278,99 +319,123 @@ export default function HearingMinutesModule() {
                 </button>
               )}
 
+              <button onClick={() => generalRegisterRef.current.click()} className="flex items-center gap-2 px-5 py-2.5 bg-[#003366] text-white border border-gray-300 rounded-xl font-bold hover:bg-[#002244] transition-all">
+                <FilePlus2 className="w-5 h-5 text-[#D4AF37]" />
+                <span>السجل العام</span>
+              </button>
+
+              {/* Bouton سجل الأحكام -> Doit appeler fileInputRef */}
               <button onClick={() => fileInputRef.current.click()} className="flex items-center gap-2 px-5 py-2.5 bg-[#003366] text-white rounded-xl font-bold hover:bg-[#002244] shadow-md transition-all">
                 <FilePlus2 className="w-5 h-5 text-[#D4AF37]" />
-                <span> سجل الأحكام </span>
+                <span>سجل الأحكام</span>
               </button>
             </div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-right">
-              <thead className="bg-gray-50 text-gray-700 font-bold border-b border-gray-200">
-                <tr>
-                  {/* --- إضافة: Checkbox تحديد الكل --- */}
-                  <th className="px-4 py-4 text-center w-12">
-                    <input 
-                      type="checkbox" 
-                      className="accent-[#D4AF37] w-4 h-4 cursor-pointer rounded"
-                      checked={selectedIds.length === currentItems.length && currentItems.length > 0}
-                      onChange={toggleSelectAll}
-                    />
-                  </th>
-                  <th className="px-6 py-4">رقم الملف</th>
-                  <th className="px-6 py-4">نوع الحكم</th>
-                  <th className="px-6 py-4">رقم الحكم</th>
-                  <th className="px-6 py-4">تاريخ الحكم</th>
-                  <th className="px-6 py-4">القاضي المقرر</th>
-                  <th className="px-6 py-4">الموضوع</th>
-                  <th className="px-6 py-4">مضمون المقرر</th>
-                  <th className="px-6 py-4 text-left">إجراءات</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {isLoading ? (
-                  <tr>
-                    <td colSpan="9" className="px-6 py-20 text-center">
-                      <Loader2 className="w-10 h-10 animate-spin mx-auto text-[#D4AF37]" />
-                      <p className="mt-4 text-gray-500">جاري تحميل البيانات...</p>
-                    </td>
-                  </tr>
-                ) : currentItems.length > 0 ? (
-                  currentItems.map((row) => (
-                    <tr key={row.id} className={`hover:bg-blue-50/40 transition-colors ${selectedIds.includes(row.id) ? 'bg-blue-50/60' : ''}`}>
-                      {/* --- إضافة: Checkbox لتحديد الصف --- */}
-                      <td className="px-4 py-4 text-center">
-                        <input 
-                          type="checkbox" 
-                          className="accent-[#003366] w-4 h-4 cursor-pointer rounded"
-                          checked={selectedIds.includes(row.id)}
-                          onChange={() => toggleSelect(row.id)}
-                        />
-                      </td>
-                      <td className="px-6 py-4 font-bold text-[#003366] whitespace-nowrap">{row.file_number}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${row.result_color}`}>
-                          {row.judgment_type}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 font-bold text-gray-900">{row.judgment_number}</td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap font-mono">{row.judgment_date}</td>
-                      <td className="px-6 py-4 text-gray-600">{row.judge}</td>
-                      <td className="px-6 py-4 truncate max-w-[150px]">{row.subject}</td>
-                      <td className="px-6 py-4">
-                        <button 
-                            onClick={() => showFullContent(row.decision_content)}
-                            className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                        >
-                            <Eye className="w-3 h-3" />
-                            عرض المحتوى
-                        </button>
-                      </td>
-                      <td className="px-6 py-4 text-left">
-                        <div className="flex justify-end gap-2">
-                          <button className="p-2 text-gray-400 hover:text-[#D4AF37] transition-colors"><Edit className="w-4 h-4" /></button>
-                          {/* --- تعديل: ربط زر الطباعة بالدالة --- */}
-                          <button 
-                            onClick={() => handlePrintSingle(row.id, row.file_number)}
-                            className="p-2 text-gray-400 hover:text-[#003366] transition-colors"
-                            title="طباعة المحضر"
-                          >
-                            <Printer className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="9" className="px-6 py-20 text-center text-gray-400">
-                      لا توجد أحكام تطابق بحثك.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+  <thead className="bg-gray-50 text-gray-700 font-bold border-b border-gray-200">
+    <tr>
+      {/* --- إضافة: Checkbox تحديد الكل --- */}
+      <th className="px-4 py-4 text-center w-12">
+        <input 
+          type="checkbox" 
+          className="accent-[#D4AF37] w-4 h-4 cursor-pointer rounded"
+          checked={selectedIds.length === currentItems.length && currentItems.length > 0}
+          onChange={toggleSelectAll}
+        />
+      </th>
+      <th className="px-6 py-4">رقم الملف</th>
+      
+      {/* 👇 تمت إضافة الأعمدة الجديدة هنا 👇 */}
+      <th className="px-6 py-4">المدعي</th>
+      <th className="px-6 py-4">المدعى عليه</th>
+      {/* 👆 ---------------------- 👆 */}
+      
+      <th className="px-6 py-4">نوع الحكم</th>
+      <th className="px-6 py-4">رقم الحكم</th>
+      <th className="px-6 py-4">تاريخ الحكم</th>
+      <th className="px-6 py-4">القاضي المقرر</th>
+      <th className="px-6 py-4">الموضوع</th>
+      <th className="px-6 py-4">مضمون المقرر</th>
+      <th className="px-6 py-4 text-left">إجراءات</th>
+    </tr>
+  </thead>
+  <tbody className="divide-y divide-gray-100">
+    {isLoading ? (
+      <tr>
+        {/* تم تغيير colSpan إلى 11 لتغطية الأعمدة الجديدة */}
+        <td colSpan="11" className="px-6 py-20 text-center">
+          <Loader2 className="w-10 h-10 animate-spin mx-auto text-[#D4AF37]" />
+          <p className="mt-4 text-gray-500">جاري تحميل البيانات...</p>
+        </td>
+      </tr>
+    ) : currentItems.length > 0 ? (
+      currentItems.map((row) => (
+        <tr key={row.id} className={`hover:bg-blue-50/40 transition-colors ${selectedIds.includes(row.id) ? 'bg-blue-50/60' : ''}`}>
+          {/* --- إضافة: Checkbox لتحديد الصف --- */}
+          <td className="px-4 py-4 text-center">
+            <input 
+              type="checkbox" 
+              className="accent-[#003366] w-4 h-4 cursor-pointer rounded"
+              checked={selectedIds.includes(row.id)}
+              onChange={() => toggleSelect(row.id)}
+            />
+          </td>
+          <td className="px-6 py-4 font-bold text-[#003366] whitespace-nowrap">{row.file_number}</td>
+          
+          {/* 👇 بيانات المدعي والمدعى عليه 👇 */}
+          <td className="px-6 py-4 font-semibold text-gray-900 max-w-[150px] truncate" title={row.plaintiff}>
+            {row.plaintiff}
+          </td>
+          <td className="px-6 py-4 text-gray-700 max-w-[150px] truncate" title={row.defendant}>
+            {row.defendant}
+          </td>
+          {/* 👆 ------------------------ 👆 */}
+          
+          <td className="px-6 py-4">
+            <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${row.result_color}`}>
+              {row.judgment_type}
+            </span>
+          </td>
+          <td className="px-6 py-4 font-bold text-gray-900">{row.judgment_number}</td>
+          <td className="px-6 py-4 text-gray-700 whitespace-nowrap font-mono">{row.judgment_date}</td>
+          <td className="px-6 py-4 text-gray-600">{row.judge}</td>
+          <td className="px-6 py-4 truncate max-w-[150px]">{row.subject}</td>
+          <td className="px-6 py-4">
+            <button 
+                onClick={() => showFullContent(row.decision_content)}
+                className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
+            >
+                <Eye className="w-3 h-3" />
+                عرض المحتوى
+            </button>
+          </td>
+          <td className="px-6 py-4 text-left">
+            <div className="flex justify-end gap-2">
+              <button className="p-2 text-gray-400 hover:text-[#D4AF37] transition-colors"><Edit className="w-4 h-4" /></button>
+              {/* --- تعديل: ربط زر الطباعة بالدالة --- */}
+              <button 
+                onClick={() => handlePrintSingle(row.id, row.file_number)}
+                className="p-2 text-gray-400 hover:text-[#003366] transition-colors"
+                title="طباعة المحضر"
+              >
+                <Printer className="w-4 h-4" />
+              </button>
+            </div>
+          </td>
+        </tr>
+      ))
+    ) : (
+      <tr>
+        {/* تم تغيير colSpan إلى 11 لتغطية الأعمدة الجديدة */}
+        <td colSpan="11" className="px-6 py-20 text-center text-gray-400">
+          لا توجد أحكام تطابق بحثك.
+        </td>
+      </tr>
+    )}
+  </tbody>
+</table>
           </div>
 
           {totalPages > 1 && (
