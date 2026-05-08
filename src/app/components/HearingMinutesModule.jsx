@@ -394,9 +394,11 @@ export default function HearingMinutesModule() {
           {/* 👆 ------------------------ 👆 */}
           
           <td className="px-6 py-4">
-            <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${row.result_color}`}>
-              {row.judgment_type}
-            </span>
+            <td className="px-6 py-4">
+  <span className={`inline-block whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-bold border ${row.result_color}`}>
+    {row.judgment_type}
+  </span>
+</td>
           </td>
           <td className="px-6 py-4 font-bold text-gray-900">{row.judgment_number}</td>
           <td className="px-6 py-4 text-gray-700 whitespace-nowrap font-mono">{row.judgment_date}</td>

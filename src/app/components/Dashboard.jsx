@@ -1,20 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
-import { KPICards } from './KPICards';
-import { DataTable } from './DataTable';
-import { FileDetailsModal } from './FileDetailsModal';
-import { NotificationPanel } from './NotificationPanel';
-import { ProductionCards } from './ProductionCards';
-import { DocumentGenerator } from './DocumentGenerator';
-import { RecouvrementForm } from './RecouvrementForm';
-import { NotificationForm } from './NotificationForm';
-import { FraisModule } from './TassfiyatSawaer/FraisModule';
-import { RegistryOfExtracts } from './RegistryOfExtracts';
-import { OutstandingDebtsModule } from './OutstandingDebtsModule';
-import { UserManagementModule } from './UserManagementModule';
-import DirectedProcedureModule from './DirectedProcedureModule';
-import CorrespondencesModule from './CorrespondencesModule';
 import HearingMinutesModule from './HearingMinutesModule';
 
 export function Dashboard({ onLogout, initialRole = 'admin' }) {
@@ -51,25 +37,6 @@ export function Dashboard({ onLogout, initialRole = 'admin' }) {
     localStorage.setItem('dashboard_active_menu', activeMenu);
   }, [activeMenu]);
 
-  // Textes en arabe uniquement
-  const texts = {
-    bureau: 'لوحة القيادة',
-    bureauDesc: 'مرحباً بك في لوحة القيادة. يمكنك إدارة القضايا وتوزيعها هنا.',
-    extraits: 'سجل المستخرجات',
-    extraitsDesc: 'وحدة سجل المستخرجات وسندات المداخيل.',
-    notification: 'مكتب التبليغ',
-    notificationDesc: 'إدارة عمليات وإجراءات التبليغ.',
-    frais: 'تصفية الصوائر',
-    fraisDesc: 'وحدة حساب وتصفية الصوائر القضائية.',
-    recouvrement: 'التحصيل',
-    recouvrementDesc: 'وحدة التحصيل وإدارة المبالغ المستردة.',
-    tresorerie: 'التنسيق مع الخزينة',
-    tresorerieDesc: 'التنسيق المالي مع الخزينة العامة.',
-    production: 'بطائق الإنتاج',
-    productionDesc: 'إدخال البيانات اليومية للإنتاج',
-    documents: 'توليد الوثائق',
-    documentsDesc: 'توليد المستندات الرسمية',
-  };
 
   return (
     <div className="flex h-screen bg-[#F8F9FA] rtl" dir="rtl">
@@ -88,58 +55,12 @@ export function Dashboard({ onLogout, initialRole = 'admin' }) {
         
         {/* Dashboard Content */}
         <main className="flex-1 overflow-y-auto p-6">
-          {activeMenu === 'bureau' && (
-            <>
-              {/* KPI Cards */}
-              <KPICards />
-              
-              {/* Data Table */}
-              <DataTable onFileClick={setSelectedFile} />
-            </>
-          )}
-
-          {activeMenu === 'production' && <ProductionCards />}
-          
-          {activeMenu === 'documents' && <DocumentGenerator />}
-
-          {activeMenu === 'outstanding' && <OutstandingDebtsModule />}
-
-          {activeMenu === 'directed' && <DirectedProcedureModule />}
-
-          {activeMenu === 'correspondences' && <CorrespondencesModule />}
 
           {activeMenu === 'hearing' && <HearingMinutesModule />}
 
-          {/* {activeMenu === 'recouvrement' && <RecouvrementForm />}
-          
-          {activeMenu === 'notification' && <NotificationForm />} */}
-
-          {activeMenu === 'frais' && <FraisModule />}
-          
-          {/* {activeMenu === 'extraits' && <RegistryOfExtracts role={role} />} */}
-
-          {activeMenu === 'users' && <UserManagementModule />}
-
-          {['tresorerie'].includes(activeMenu) && (
-            <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">{texts[activeMenu]}</h2>
-              <p className="text-gray-600">{texts[`${activeMenu}Desc`]}</p>
-            </div>
-          )}
         </main>
       </div>
-
-      {/* Modals and Panels */}
-      {selectedFile && (
-        <FileDetailsModal 
-          file={selectedFile} 
-          onClose={() => setSelectedFile(null)} 
-        />
-      )}
-      
-      {showNotifications && (
-        <NotificationPanel onClose={() => setShowNotifications(false)} />
-      )}
+    
     </div>
   );
 }

@@ -104,12 +104,12 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
             مرحباً بكم  
           </h1>
           <p className="text-lg text-[#D4AF37] font-medium tracking-widest uppercase mb-8">
-            نظام التبليغ والتحصيل
+             القضاء الاستعجالي 
           </p>
           <div className="w-16 h-1 bg-[#D4AF37] rounded-full" />
           
           <div className="absolute bottom-8 text-sm text-gray-400 font-medium">
-            © {new Date().getFullYear()} شعبة التبليغ والتحصيل.
+            © {new Date().getFullYear()} شعبة القضاء الاستعجالي.
           </div>
         </div>
       </div>
@@ -127,7 +127,7 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
                   <Shield className="w-8 h-8 text-[#003366] -rotate-3" />
                 </div>
                 <h2 className="text-3xl font-bold text-[#003366] mb-2">تسجيل الدخول</h2>
-                <p className="text-gray-500 text-sm leading-relaxed">الولوج إلى نظام التبليغ والتحصيل</p>
+                <p className="text-gray-500 text-sm leading-relaxed">الولوج إلى نظام القضاء الاستعجالي</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -227,7 +227,7 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
             <div className="bg-white p-4 text-center border-t border-gray-100">
               <p className="text-xs text-[#0A2540] font-medium flex items-center justify-center gap-1.5">
                 <Lock className="w-3.5 h-3.5" />
-                فضاء مشفر ومؤمن بالكامل • شعبة التبليغ والتحصيل
+                فضاء مشفر ومؤمن بالكامل • شعبة القضاء الاستعجالي
               </p>
             </div>
           </div>

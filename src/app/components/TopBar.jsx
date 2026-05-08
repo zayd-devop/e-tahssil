@@ -52,7 +52,7 @@ export function TopBar({ onNotificationClick, onLogout, role, onRoleChange }) {
 
   const t = {
     kingdom: 'المملكة المغربية',
-    ministry: 'شعبة التبليغ والتحصيل',
+    ministry: 'شعبة الاستعجالي  ',
     searchAlert: 'البحث عن:',
     logout: 'تسجيل الخروج',
   };

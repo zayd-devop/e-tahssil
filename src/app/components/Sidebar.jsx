@@ -15,18 +15,7 @@ import {
 
 export function Sidebar({ activeMenu, onMenuChange, role }) {
   const menuItems = [
-    { id: 'bureau', icon: LayoutDashboard, label: 'لوحة القيادة', adminOnly: true },
-    { id: 'production', icon: ClipboardList, label: 'بطائق الإنتاج' },
     { id: 'hearing', icon: Gavel, label: 'محضر الجلسة' },
-    { id: 'directed', icon: FileSpreadsheet, label: 'إجراء يوجه' },
-    { id: 'correspondences', icon: Send, label: 'المراسلات'},
-    { id: 'outstanding', icon: BookOpen, label: 'الباقي بدون تحصيل' },
-    // { id: 'notification', icon: Bell, label: 'تبليغ المقررات' },
-    // { id: 'recouvrement', icon: Wallet, label: 'التحصيل' },
-    { id: 'frais', icon: Calculator, label: 'تصفية الصوائر' },
-    // { id: 'extraits', icon: BookOpen, label: 'سجل المستخرجات' },
-    { id: 'documents', icon: FileSignature, label: 'توليد الوثائق' },
-    { id: 'users', icon: Users, label: 'إدارة الموظفين', adminOnly: true },
   ];
 
   return (
@@ -35,12 +24,12 @@ export function Sidebar({ activeMenu, onMenuChange, role }) {
       <div className="p-6 border-b border-[#004080]">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-gradient-to-br from-[#D4AF37] to-[#C5A028] rounded-lg flex items-center justify-center shrink-0 shadow-lg">
-            <span className="text-[#003366] font-bold text-xl">ET</span>
+            <span className="text-[#003366] font-bold text-xl">TR</span>
           </div>
           <div className="text-right overflow-hidden">
-            <h1 className="font-bold text-lg truncate">E-Tahssil</h1>
+            <h1 className="font-bold text-lg truncate">E-tribunal</h1>
             <p className="text-xs text-[#D4AF37] truncate font-medium">
-              شعبة التبليغ والتحصيل
+              شعبة الاستعجالي
             </p>
           </div>
         </div>
