@@ -64,7 +64,7 @@ export function Sidebar({ activeMenu, onMenuChange, role }) {
                   <div className={`p-2 rounded-lg transition-colors ${isActive ? 'bg-[#D4AF37]/20' : 'bg-transparent'}`}>
                     <item.icon className={`w-5 h-5 ${isActive ? 'text-[#D4AF37]' : 'text-gray-400'}`} />
                   </div>
-                  <span className="text-sm text-right flex-1">
+                  <span className="text-sm text-right flex-1  cursor-pointer">
                     {item.label}
                   </span>
                   {isActive && (
