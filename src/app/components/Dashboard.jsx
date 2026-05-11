@@ -15,7 +15,6 @@ import { OutstandingDebtsModule } from './OutstandingDebtsModule';
 import { UserManagementModule } from './UserManagementModule';
 import DirectedProcedureModule from './DirectedProcedureModule';
 import CorrespondencesModule from './CorrespondencesModule';
-import HearingMinutesModule from './HearingMinutesModule';
 
 export function Dashboard({ onLogout }) {
   // 🔥 1. On récupère le VRAI rôle depuis la session de connexion
@@ -99,8 +98,6 @@ export function Dashboard({ onLogout }) {
           {activeMenu === 'directed' && <DirectedProcedureModule />}
 
           {activeMenu === 'correspondences' && <CorrespondencesModule />}
-
-          {activeMenu === 'hearing' && <HearingMinutesModule />}
 
           {/* {activeMenu === 'recouvrement' && <RecouvrementForm />}
           
