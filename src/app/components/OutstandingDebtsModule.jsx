@@ -39,7 +39,7 @@ export function OutstandingDebtsModule() {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
         }
       });
       
@@ -91,13 +91,13 @@ export function OutstandingDebtsModule() {
     });
 
     try {
-      console.log(localStorage.getItem('token'))
+      console.log(sessionStorage.getItem('token'))
       const response = await fetch('http://localhost:8000/api/outstanding-debts/import', {
         method: 'POST',
         body: formData,
         headers: {
           'Accept': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
         },
         
       });
