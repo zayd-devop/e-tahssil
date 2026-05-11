@@ -297,7 +297,7 @@ export function DocumentGenerator() {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
         },
         body: JSON.stringify(payload)
       });
@@ -374,8 +374,8 @@ a.download = `${docName}_${safeDossierNum}.docx`;
       const fetchHistory = async () => {
         setIsLoadingHistory(true);
         try {
-          // 1. Récupère ton token d'authentification (adapte cette ligne selon l'endroit où tu le stockes, par exemple localStorage)
-          const token = localStorage.getItem('token'); 
+          // 1. Récupère ton token d'authentification (adapte cette ligne selon l'endroit où tu le stockes, par exemple sessionStorage)
+          const token = sessionStorage.getItem('token'); 
 
           // 2. On ajoute les Headers à la requête fetch
           const response = await fetch(`http://127.0.0.1:8000/api/folders?page=${currentPage}`, {
