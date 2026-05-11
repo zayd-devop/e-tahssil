@@ -20,10 +20,9 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true); // تشغيل أيقونة التحميل
+    setIsLoading(true);
 
     try {
-      // إرسال الطلب إلى Laravel API
       const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
         headers: {
@@ -31,7 +30,7 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          email: formData.identifier, // نرسل الـ identifier على أنه email ليتوافق مع Laravel
+          email: formData.identifier,
           password: formData.password
         })
       });
@@ -39,19 +38,20 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
       const data = await response.json();
 
       if (response.ok) {
-        // 1. حفظ التوكن (Token) في المتصفح لاستخدامه لاحقاً في الطلبات المحمية
+        // 1. Sauvegarde des tokens et infos utilisateur
         sessionStorage.setItem('token', data.access_token);
         sessionStorage.setItem('user', JSON.stringify(data.user));
-
-        // 2. تحديد الصلاحية (يمكنك لاحقاً جلبها من قاعدة البيانات data.user.role)
-        const identifier = formData.identifier.toLowerCase();
-        if (identifier.includes('clerk') || identifier.includes('كاتب') || identifier.includes('sarah')) {
-          onRoleChange('clerk');
-        } else {
-          onRoleChange('admin'); // الافتراضي
-        }
         
-        // 3. إشعار النجاح والدخول
+        // 🔥 2. LA CORRECTION EST ICI : 
+        // On récupère le vrai rôle depuis la base de données et on le sauvegarde !
+        const userRole = data.user.role;
+        sessionStorage.setItem('userRole', userRole); 
+
+        // On informe le composant parent du rôle exact
+        onRoleChange(userRole); 
+        // ---------------------------------------------------------
+        
+        // 3. Notification de succès
         Swal.fire({
           icon: 'success',
           title: 'مرحباً بك!',
@@ -62,7 +62,6 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
 
         onLogin();
       } else {
-        // إذا كانت البيانات خاطئة (401 Unauthorized)
         Swal.fire({
           icon: 'error',
           title: 'فشل الدخول',
@@ -72,7 +71,6 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
       }
     } catch (error) {
       console.error('Login Error:', error);
-      // إذا كان السيرفر متوقفاً
       Swal.fire({
         icon: 'error',
         title: 'خطأ في الاتصال',
@@ -80,7 +78,7 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
         confirmButtonColor: '#003366'
       });
     } finally {
-      setIsLoading(false); // إيقاف أيقونة التحميل
+      setIsLoading(false);
     }
   };
 

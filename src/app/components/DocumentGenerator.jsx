@@ -375,6 +375,7 @@ a.download = `${docName}_${safeDossierNum}.docx`;
         setIsLoadingHistory(true);
         try {
           // 1. Récupère ton token d'authentification (adapte cette ligne selon l'endroit où tu le stockes, par exemple localStorage)
+          // 1. Récupère ton token d'authentification (adapte cette ligne selon l'endroit où tu le stockes, par exemple sessionStorage)
           const token = sessionStorage.getItem('token'); 
 
           // 2. On ajoute les Headers à la requête fetch

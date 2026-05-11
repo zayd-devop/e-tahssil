@@ -104,7 +104,7 @@ export function TopBar({ onNotificationClick, onLogout, role, onRoleChange }) {
               <div className={`w-10 h-10 ${currentUser.bgClass} rounded-full flex items-center justify-center shrink-0 transition-colors duration-300`}>
                 <User className="w-6 h-6 text-white" />
               </div>
-              <div className="text-right">
+              <div className="text-right  cursor-pointer">
                 <p className="text-sm font-bold text-gray-900 whitespace-nowrap">{currentUser.name}</p>
                 <div className={`inline-block text-[11px] font-bold px-2 py-0.5 rounded mt-0.5 transition-colors duration-300 ${currentUser.textClass} bg-opacity-10`} style={{ backgroundColor: `${currentUser.color}1A` }}>
                   {currentUser.status}
@@ -128,7 +128,7 @@ export function TopBar({ onNotificationClick, onLogout, role, onRoleChange }) {
                     setShowUserMenu(false);
                     onLogout();
                   }}
-                  className="w-full px-4 py-3 text-sm font-bold text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors justify-start"
+                  className="w-full px-4 py-3 text-sm font-bold text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors justify-start cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>{t.logout}</span>

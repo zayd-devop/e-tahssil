@@ -17,41 +17,37 @@ import DirectedProcedureModule from './DirectedProcedureModule';
 import CorrespondencesModule from './CorrespondencesModule';
 import HearingMinutesModule from './HearingMinutesModule';
 
-export function Dashboard({ onLogout, initialRole = 'admin' }) {
-  const [role, setRole] = useState(initialRole);
+export function Dashboard({ onLogout }) {
+  // 🔥 1. On récupère le VRAI rôle depuis la session de connexion
+  const [role, setRole] = useState(() => {
+    return sessionStorage.getItem('userRole') || 'clerk'; // 'clerk' par défaut pour plus de sécurité
+  });
   
-  // 1. Initialisation depuis le localStorage
+  // 2. Initialisation du menu actif
   const [activeMenu, setActiveMenu] = useState(() => {
     const savedMenu = localStorage.getItem('dashboard_active_menu');
     if (savedMenu) return savedMenu;
-    // Valeur par défaut si rien n'est sauvegardé
-    return initialRole === 'admin' ? 'bureau' : 'production';
+    
+    // Si l'utilisateur est un admin, il atterrit sur le bureau, sinon sur la production
+    return role === 'admin' ? 'bureau' : 'production';
   });
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
 
-  // Mise à jour du rôle et du menu si initialRole change
+  // 3. Sécurité supplémentaire : 
+  // Si on est connecté en tant que clerk, et qu'on essaie de forcer un menu admin
   useEffect(() => {
-    setRole(initialRole);
-    if (initialRole === 'clerk' && activeMenu === 'bureau') {
-      setActiveMenu('production');
-    }
-  }, [initialRole]);
-
-  // Si le rôle passe à clerk et qu'on est sur une page admin, on bascule sur production
-  useEffect(() => {
-    if (role === 'clerk' && activeMenu === 'bureau') {
+    if (role !== 'admin' && (activeMenu === 'bureau' || activeMenu === 'users')) {
       setActiveMenu('production');
     }
   }, [role, activeMenu]);
 
-  // 2. Sauvegarde du menu actif dans le localStorage à chaque changement
+  // 4. Sauvegarde du menu actif
   useEffect(() => {
     localStorage.setItem('dashboard_active_menu', activeMenu);
   }, [activeMenu]);
 
-  // Textes en arabe uniquement
   const texts = {
     bureau: 'لوحة القيادة',
     bureauDesc: 'مرحباً بك في لوحة القيادة. يمكنك إدارة القضايا وتوزيعها هنا.',
@@ -73,37 +69,33 @@ export function Dashboard({ onLogout, initialRole = 'admin' }) {
 
   return (
     <div className="flex h-screen bg-[#F8F9FA] rtl" dir="rtl">
-      {/* Sidebar */}
+      {/* 🔥 On passe le 'role' à la Sidebar. 
+        Comme ta Sidebar a déjà la condition `if (item.adminOnly && role !== 'admin')`, 
+        le bouton des utilisateurs va disparaître pour les clerks ! 
+      */}
       <Sidebar activeMenu={activeMenu} onMenuChange={setActiveMenu} role={role} />
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Bar */}
         <TopBar 
           onNotificationClick={() => setShowNotifications(!showNotifications)}
           onLogout={onLogout}
           role={role}
+          // On garde la fonction onRoleChange si tu as un sélecteur dans ta TopBar
           onRoleChange={setRole}
         />
         
-        {/* Dashboard Content */}
         <main className="flex-1 overflow-y-auto p-6">
-          {activeMenu === 'bureau' && (
+          {/* Seul l'admin voit le bureau (tableaux de bord globaux) */}
+          {activeMenu === 'bureau' && role === 'admin' && (
             <>
-              {/* KPI Cards */}
               <KPICards />
-              
-              {/* Data Table */}
               <DataTable onFileClick={setSelectedFile} />
             </>
           )}
 
           {activeMenu === 'production' && <ProductionCards />}
-          
           {activeMenu === 'documents' && <DocumentGenerator />}
-
           {activeMenu === 'outstanding' && <OutstandingDebtsModule />}
-
           {activeMenu === 'directed' && <DirectedProcedureModule />}
 
           {activeMenu === 'correspondences' && <CorrespondencesModule />}
@@ -115,10 +107,9 @@ export function Dashboard({ onLogout, initialRole = 'admin' }) {
           {activeMenu === 'notification' && <NotificationForm />} */}
 
           {activeMenu === 'frais' && <FraisModule />}
-          
-          {/* {activeMenu === 'extraits' && <RegistryOfExtracts role={role} />} */}
 
-          {activeMenu === 'users' && <UserManagementModule />}
+          {/* Seul l'admin a le droit de voir et rendre le module des utilisateurs */}
+          {activeMenu === 'users' && role === 'admin' && <UserManagementModule />}
 
           {['tresorerie'].includes(activeMenu) && (
             <div className="bg-white rounded-xl shadow-sm p-8 text-center">
@@ -129,7 +120,6 @@ export function Dashboard({ onLogout, initialRole = 'admin' }) {
         </main>
       </div>
 
-      {/* Modals and Panels */}
       {selectedFile && (
         <FileDetailsModal 
           file={selectedFile} 

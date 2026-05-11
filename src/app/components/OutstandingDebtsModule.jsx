@@ -32,14 +32,14 @@ export function OutstandingDebtsModule() {
   const fetchDebts = async () => {
     try {
       setIsLoading(true);
-      const url = `http://localhost:8000/api/outstanding-debts?year=${selectedYear}`;
+      const url = `http://127.0.0.1:8000/api/outstanding-debts?year=${selectedYear}`;
       
       // 👇 التعديل الإجباري هنا 👇
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
         }
       });
       
@@ -91,13 +91,13 @@ export function OutstandingDebtsModule() {
     });
 
     try {
-      console.log(localStorage.getItem('token'))
-      const response = await fetch('http://localhost:8000/api/outstanding-debts/import', {
+      console.log(sessionStorage.getItem('token'))
+      const response = await fetch('http://127.0.0.1:8000/api/outstanding-debts/import', {
         method: 'POST',
         body: formData,
         headers: {
           'Accept': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
         },
         
       });
