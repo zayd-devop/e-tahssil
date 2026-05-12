@@ -1,29 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Activity, Info, Mail, ShieldAlert, DollarSign, Zap, ChevronDown, Check, X } from 'lucide-react';
+import { Save, Activity, Info, Mail, ShieldAlert, DollarSign, ChevronDown, X, Loader2 } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 export function ProductionCards() {
-  const todayDate = new Date().toISOString().split('T')[0];
+
+  // حالات جلب البيانات من الخادم
+  const [hierarchyData, setHierarchyData] = useState([]);
+  const [isLoadingHierarchy, setIsLoadingHierarchy] = useState(true);
 
   const [formData, setFormData] = useState({
     employeeName: '',
     section: '',
     registre: '',
+    todayDate: new Date().toISOString().split('T')[0], // التاريخ الافتراضي هو اليوم، لكنه الآن قابل للتعديل
     selectedActions: [], 
     dossiersNotifies: '',
     dossiersExecutes: '',
     montantRecouvre: '',
-    nombrePVs: '',
     pvPositif: false,
+    pvPositifCount: '',
     pvNegatif: false,
+    pvNegatifCount: '',
     contrainte: '',
-    // 🔥 SÉPARATION ICI
     dossiersAnnulation: '',
     dossiersIskatat: '',
-    // -----------------
     montantDelegations: '',
-    montantRecouvreSuite: '',
     contrePersonnes: false,
-    contreSocietes: false
+    montantPersonnes: '',
+    contreSocietes: false,
+    montantSocietes: ''
   });
 
   const [currentCategory, setCurrentCategory] = useState('');
@@ -36,33 +41,13 @@ export function ProductionCards() {
     successMsg: 'تم حفظ البطاقة بنجاح',
     
     card1Title: 'معلومات عامة',
-    dateLabel: 'تاريخ اليوم',
+    dateLabel: 'تاريخ الإنجاز', // تم تعديل التسمية قليلاً لتناسب أي تاريخ
     sectionLabel: 'الشعبة',
-    sections: ['شعبة التبليغ الزجري', 'شعبة التنفيذ الزجري', 'تصفية الصوائر'],
     registresLabel: 'مسك السجلات',
     registres: ['سجل العقوبات البدنية 512', 'سجل التنفيذات 604', 'سجل الانابات الواردة و الصادرة'],
 
     card2Title: 'العمل الإداري والتبليغ (الإجراءات المنجزة)',
     actionCategoryLabel: 'فئة الإجراءات',
-    actionsHierarchy: {
-      'شعبة التبليغ الزجري': {
-        'المعالجة الأولية': ['الاستقبالات والإجراءات', 'ضبط وفرز الملفات المحالة', 'تفصيل الأحكام بالنظام المعلوماتي'],
-        'عمليات التبليغ': ['إنجاز طيات التبليغ', 'الاستدعاءات', 'إرسالها إلى المفوضين القضائيين', 'تضمين مرجوعات شواهد التسليم'],
-        'مخالفات السير': ['معالجة مخالفات الرادار الثابت', 'استخلاص الأوامر بالدفع', 'تسجيل الملفات في نظام الاكسيل'],
-        'الإجراءات الخاصة': ['فتح المختصرات', 'فتح ملفات الإكراه البدني', 'التسجيل بالكناش العام', 'التحصيل خارج المحكمة']
-      },
-      'شعبة التنفيذ الزجري': {
-        'التنفيذ المباشر': ['مباشرة الاجراءات وتنفيد الملفات', 'تبليغ الأحكام والإنذارات', 'تسليم نسخ الأحكام'],
-        'الإنابات والمراسلات': ['ترتيب وفرز وفتح ملفات الانابات الواردة', 'استخراج الاشعار بدون صائر', 'المراسلات الادارية', 'اعداد انابات صوائر الرسوم التكميلية'],
-        'السندات والمختصرات': ['إعداد قوائم المختصرات', 'إعداد السندات التنفيذية', 'الأوامر بالدفع المستخلصة'],
-        'مخالفات السير': ['تضمين احكام مخالفات الرادار في EXCEL', 'الاستدعاءات', 'استخلاص السندات التنفيدية']
-      },
-      'تصفية الصوائر': {
-        'المعالجة والرسوم': ['ترتيب وفرز الملفات', 'تحديد وحساب الرسم القضائي', 'إعداد الأوامر التنفيذية', 'إعداد بيانات المبالغ المتحملة'],
-        'التضمين والمتابعة': ['إعداد الاستدعاءات', 'تضمين الكل في السجل العام والنظام المعلوماتي', 'فتح الملفات', 'نسخ الاحكام']
-      }
-    },
-    
     dependentFieldsHint: 'الحقول المرتبطة بالإنجازات اليومية:',
     dossiersNotifiesLabel: 'الملفات المبلغة',
     dossiersExecutesLabel: 'عدد الملفات المنفذة',
@@ -72,29 +57,26 @@ export function ProductionCards() {
     nombrePVsLabel: 'عدد المحاضر',
     pvPositifLabel: 'إيجابي',
     pvNegatifLabel: 'سلبي',
-    contrainteLabel: 'الإكراهات البدنية',
+    contrainteLabel: ' عدد الإكراهات البدنية',
 
     card4Title: 'تتمة التنفيذات والتحصيل',
-    // 🔥 NOUVEAUX LABELS SÉPARÉS
     dossiersAnnulationLabel: 'عدد الإلغاءات',
     dossiersIskatatLabel: 'عدد الإسقاطات',
-    dossierIstirdadatLabel: 'عدد الاستردادات ',
-    // ------------------------
     montantDelegationsLabel: 'مبالغ الإنابات الواردة (د.م)',
     montantRecouvreSuiteLabel: 'المبالغ المستخلصة',
     contrePersonnesLabel: 'ضد الأشخاص',
     contreSocietesLabel: 'ضد الشركات',
   };
 
-  const currentSection = formData.section || t.sections[0];
+  const getToken = () => sessionStorage.getItem('token') || localStorage.getItem('token');
 
+  // جلب معلومات المستخدم
   useEffect(() => {
     const userStorage = sessionStorage.getItem('user');
     if (userStorage) {
       const userData = JSON.parse(userStorage);
       const prenom = userData.prenom || userData?.clerk?.prenom || userData?.admin?.prenom || '';
       const nom = userData.nom || userData?.clerk?.nom || userData?.admin?.nom || '';
-      
       let fullName = 'مستخدم';
       if (prenom || nom) {
         fullName = `${prenom} ${nom}`.trim();
@@ -105,14 +87,49 @@ export function ProductionCards() {
     }
   }, []);
 
+  // --- جلب هيكلة الشُعب والإجراءات من الخادم ---
+  useEffect(() => {
+    const fetchHierarchy = async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:8000/api/sections-hierarchy', {
+          headers: { 'Authorization': `Bearer ${getToken()}`, 'Accept': 'application/json' }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setHierarchyData(data);
+          if (data.length > 0) {
+            setFormData(prev => ({ ...prev, section: data[0].name }));
+          }
+        }
+      } catch (error) {
+        console.error("Erreur de chargement des sections:", error);
+      } finally {
+        setIsLoadingHierarchy(false);
+      }
+    };
+    fetchHierarchy();
+  }, []);
+
+  // استخراج الفئات والمهام بناءً على الاختيار الحالي
+  const selectedSectionData = hierarchyData.find(s => s.name === formData.section);
+  const availableCategories = selectedSectionData ? selectedSectionData.categories : [];
+  const selectedCategoryData = availableCategories.find(c => c.name === currentCategory);
+  const currentTasks = selectedCategoryData ? selectedCategoryData.actions : [];
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => {
       const updatedData = { ...prev, [name]: type === 'checkbox' ? checked : value };
+      
       if (name === 'section') {
         updatedData.selectedActions = [];
         setCurrentCategory('');
       }
+      if (name === 'pvPositif' && !checked) updatedData.pvPositifCount = '';
+      if (name === 'pvNegatif' && !checked) updatedData.pvNegatifCount = '';
+      if (name === 'contrePersonnes' && !checked) updatedData.montantPersonnes = '';
+      if (name === 'contreSocietes' && !checked) updatedData.montantSocietes = '';
+
       return updatedData;
     });
   };
@@ -129,29 +146,62 @@ export function ProductionCards() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Données envoyées : ", formData);
     
-    alert(t.successMsg);
-    setFormData(prev => ({
-      ...prev, 
-      section: '', registre: '', selectedActions: [], dossiersNotifies: '',
-      dossiersExecutes: '', montantRecouvre: '', 
-      nombrePVs: '', pvPositif: false, pvNegatif: false, 
-      contrainte: '', 
-      dossiersAnnulation: '', dossiersIskatat: '', // Réinitialisation des deux champs
-      montantDelegations: '', montantRecouvreSuite: '', 
-      contrePersonnes: false, contreSocietes: false
-    }));
-    setCurrentCategory('');
+    Swal.fire({
+      title: 'جاري الحفظ...',
+      text: 'الرجاء الانتظار',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/production-cards', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${getToken()}`
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        Swal.fire({
+          icon: 'success',
+          title: t.successMsg,
+          confirmButtonColor: '#003366',
+          timer: 2000
+        });
+
+        // مسح الحقول بعد الحفظ مع الاحتفاظ بالتاريخ المختار واسم الموظف
+        setFormData(prev => ({
+          ...prev, 
+          registre: '', selectedActions: [], dossiersNotifies: '',
+          dossiersExecutes: '', montantRecouvre: '', 
+          pvPositif: false, pvPositifCount: '', 
+          pvNegatif: false, pvNegatifCount: '', 
+          contrainte: '', dossiersAnnulation: '', dossiersIskatat: '',
+          montantDelegations: '', contrePersonnes: false, montantPersonnes: '', 
+          contreSocietes: false, montantSocietes: ''
+        }));
+        setCurrentCategory('');
+      } else {
+        const errorData = await response.json();
+        Swal.fire({ icon: 'error', title: 'خطأ', text: errorData.message || 'حدث خطأ أثناء الحفظ', confirmButtonColor: '#003366' });
+      }
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'خطأ في الاتصال', text: 'تعذر الاتصال بالخادم', confirmButtonColor: '#003366' });
+    }
   };
 
   const inputClassName = "w-full p-3.5 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent bg-gray-50 transition-all text-[#003366] placeholder-gray-500 text-right";
   const labelClassName = "block text-sm font-semibold text-gray-700 mb-2 text-right";
 
-  const availableCategories = Object.keys(t.actionsHierarchy[currentSection] || {});
-  const currentTasks = currentCategory ? t.actionsHierarchy[currentSection][currentCategory] : [];
+  if (isLoadingHierarchy) {
+    return <div className="flex justify-center items-center h-64"><Loader2 className="w-10 h-10 animate-spin text-[#003366]" /></div>;
+  }
 
   return (
     <div className="bg-transparent max-w-5xl mx-auto mt-6" dir="rtl">
@@ -171,14 +221,7 @@ export function ProductionCards() {
           <label className="block text-lg font-bold text-[#003366] mb-3 text-right">
             {t.employeeLabel} <span className="text-red-500">*</span>
           </label>
-          <input
-            type="text"
-            name="employeeName"
-            value={formData.employeeName}
-            readOnly
-            disabled
-            className="w-full p-4 text-base border-2 border-gray-200 rounded-lg bg-gray-100 text-[#003366] font-bold cursor-not-allowed transition-all text-right"
-          />
+          <input type="text" name="employeeName" value={formData.employeeName} readOnly disabled className="w-full p-4 text-base border-2 border-gray-200 rounded-lg bg-gray-100 text-[#003366] font-bold cursor-not-allowed transition-all text-right" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -191,17 +234,25 @@ export function ProductionCards() {
             <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-5">
               <div>
                 <label className={labelClassName}>{t.dateLabel}</label>
-                <input type="date" value={todayDate} readOnly className={`${inputClassName} bg-gray-100 text-gray-500 cursor-not-allowed`} />
+                {/* تم تعديل حقل التاريخ هنا ليصبح قابلاً للاختيار */}
+                <input 
+                  type="date" 
+                  name="todayDate"
+                  value={formData.todayDate} 
+                  onChange={handleChange}
+                  className={`${inputClassName} bg-white cursor-pointer`}
+                  required
+                />
               </div>
               <div>
                 <label className={labelClassName}>{t.sectionLabel}</label>
-                <select name="section" value={formData.section || currentSection} onChange={handleChange} className={inputClassName} required>
-                  {t.sections.map((sec, idx) => (<option key={idx} value={sec}>{sec}</option>))}
+                <select name="section" value={formData.section} onChange={handleChange} className={`${inputClassName} bg-white cursor-pointer`} required>
+                  {hierarchyData.map((sec) => (<option key={sec.id} value={sec.name}>{sec.name}</option>))}
                 </select>
               </div>
               <div>
                 <label className={labelClassName}>{t.registresLabel}</label>
-                <select name="registre" value={formData.registre} onChange={handleChange} className={inputClassName}>
+                <select name="registre" value={formData.registre} onChange={handleChange} className={`${inputClassName} bg-white cursor-pointer`}>
                   <option value="">اختر السجل...</option>
                   {t.registres.map((reg, idx) => (<option key={idx} value={reg}>{reg}</option>))}
                 </select>
@@ -225,9 +276,9 @@ export function ProductionCards() {
                     {t.actionCategoryLabel}
                   </label>
                   <div className="relative">
-                    <select value={currentCategory} onChange={(e) => setCurrentCategory(e.target.value)} className={`${inputClassName} appearance-none truncate pl-10`}>
+                    <select value={currentCategory} onChange={(e) => setCurrentCategory(e.target.value)} className={`${inputClassName} bg-white appearance-none truncate pl-10 cursor-pointer`}>
                       <option value="">اختر الفئة...</option>
-                      {availableCategories.map((cat, idx) => (<option key={idx} value={cat}>{cat}</option>))}
+                      {availableCategories.map((cat) => (<option key={cat.id} value={cat.name}>{cat.name}</option>))}
                     </select>
                     <div className="absolute top-1/2 -translate-y-1/2 pointer-events-none left-4">
                       <ChevronDown className="w-5 h-5 text-gray-500" />
@@ -240,10 +291,10 @@ export function ProductionCards() {
                     <p className="text-gray-400 text-sm text-center mt-2">الرجاء اختيار فئة لعرض المهام المتاحة...</p>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {currentTasks.map((task, idx) => (
-                        <label key={idx} className="flex items-start gap-3 p-2 hover:bg-white rounded-lg cursor-pointer transition-colors border border-transparent hover:border-gray-200">
-                          <input type="checkbox" checked={formData.selectedActions.includes(task)} onChange={() => toggleAction(task)} className="mt-1 w-5 h-5 rounded border-gray-300 text-[#003366] focus:ring-[#003366]" />
-                          <span className="text-sm font-medium text-gray-700 leading-tight">{task}</span>
+                      {currentTasks.map((task) => (
+                        <label key={task.id} className="flex items-start gap-3 p-2 hover:bg-white rounded-lg cursor-pointer transition-colors border border-transparent hover:border-gray-200">
+                          <input type="checkbox" checked={formData.selectedActions.includes(task.name)} onChange={() => toggleAction(task.name)} className="mt-1 w-5 h-5 rounded border-gray-300 text-[#003366] focus:ring-[#003366]" />
+                          <span className="text-sm font-medium text-gray-700 leading-tight">{task.name}</span>
                         </label>
                       ))}
                     </div>
@@ -297,22 +348,31 @@ export function ProductionCards() {
               <h3 className="text-lg font-bold text-gray-800">{t.card3Title}</h3>
             </div>
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+              
               <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-col justify-center">
                 <label className={labelClassName}>{t.nombrePVsLabel}</label>
-                <div className="flex flex-col sm:flex-row gap-5 items-center mt-1">
-                  <input type="number" name="nombrePVs" min="0" value={formData.nombrePVs} onChange={handleChange} className={`${inputClassName} bg-white sm:w-1/2`} />
-                  <div className="flex items-center justify-center sm:justify-start gap-6 w-full sm:w-1/2">
-                    <label className="flex items-center gap-2.5 cursor-pointer">
+                <div className="flex flex-col gap-4 mt-2">
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2.5 cursor-pointer w-24">
                       <input type="checkbox" name="pvPositif" checked={formData.pvPositif} onChange={handleChange} className="w-5 h-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
                       <span className="font-bold text-gray-700">{t.pvPositifLabel}</span>
                     </label>
-                    <label className="flex items-center gap-2.5 cursor-pointer">
+                    {formData.pvPositif && (
+                      <input type="number" name="pvPositifCount" min="0" placeholder="العدد..." value={formData.pvPositifCount} onChange={handleChange} className={`${inputClassName} py-2 bg-white flex-1`} />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2.5 cursor-pointer w-24">
                       <input type="checkbox" name="pvNegatif" checked={formData.pvNegatif} onChange={handleChange} className="w-5 h-5 rounded border-gray-300 text-red-600 focus:ring-red-500" />
                       <span className="font-bold text-gray-700">{t.pvNegatifLabel}</span>
                     </label>
+                    {formData.pvNegatif && (
+                      <input type="number" name="pvNegatifCount" min="0" placeholder="العدد..." value={formData.pvNegatifCount} onChange={handleChange} className={`${inputClassName} py-2 bg-white flex-1`} />
+                    )}
                   </div>
                 </div>
               </div>
+
               <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-col justify-center">
                 <label className={labelClassName}>{t.contrainteLabel}</label>
                 <div className="mt-1">
@@ -322,7 +382,7 @@ export function ProductionCards() {
             </div>
           </div>
 
-          {/* 🔥 Card 4: Exécutions & Recouvrements (Grille à 3 colonnes) */}
+          {/* Card 4: Exécutions & Recouvrements */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden lg:col-span-2">
             <div className="bg-gray-50 p-4 border-b border-gray-100 flex items-center gap-3">
               <DollarSign className="w-5 h-5 text-emerald-600" />
@@ -331,7 +391,6 @@ export function ProductionCards() {
             
             <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
               
-              {/* 1. الإلغاءات */}
               <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-col justify-center">
                 <label className={labelClassName}>{t.dossiersAnnulationLabel}</label>
                 <div className="mt-1">
@@ -339,7 +398,6 @@ export function ProductionCards() {
                 </div>
               </div>
 
-              {/* 2. الإسقاطات (Nouveau) */}
               <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-col justify-center">
                 <label className={labelClassName}>{t.dossiersIskatatLabel}</label>
                 <div className="mt-1">
@@ -347,52 +405,42 @@ export function ProductionCards() {
                 </div>
               </div>
               
-              {/* 3. الإنابات */}
-             <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-col justify-center">
-                <label className={labelClassName}>{t.dossierIstirdadatLabel}</label>
+              <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-col justify-center">
+                <label className={labelClassName}>{t.montantDelegationsLabel}</label>
                 <div className="relative mt-1">
-                  <input type="number" name="dossierIstirdadat" min="0" step="0.01" value={formData.dossierIstirdadat} onChange={handleChange} className={`${inputClassName} bg-white font-mono `} />
+                  <input type="number" name="montantDelegations" min="0" step="0.01" value={formData.montantDelegations} onChange={handleChange} className={`${inputClassName} bg-white font-mono pl-14`} />
+                  <span className="absolute top-1/2 -translate-y-1/2 left-4 text-gray-500 font-semibold bg-gray-100 px-2 py-1 rounded text-xs">MAD</span>
                 </div>
               </div>
 
-              {/* 4. المبالغ المستخلصة (Pleine largeur sur 3 colonnes) */}
               <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-col justify-center md:col-span-3">
                 <label className={labelClassName}>{t.montantRecouvreSuiteLabel}</label>
-                <div className="flex flex-col sm:flex-row gap-5 items-center mt-1">
-                  <div className="relative w-full sm:w-1/2">
-                    <input 
-                      type="number" 
-                      name="montantRecouvreSuite" 
-                      min="0" 
-                      step="0.01" 
-                      value={formData.montantRecouvreSuite} 
-                      onChange={handleChange} 
-                      className={`${inputClassName} bg-white font-mono pl-14`} 
-                    />
-                    <span className="absolute top-1/2 -translate-y-1/2 left-4 text-gray-500 font-semibold bg-gray-100 px-2 py-1 rounded text-xs">MAD</span>
-                  </div>
-                  
-                  <div className="flex items-center justify-center sm:justify-start gap-6 w-full sm:w-1/2">
+                
+                <div className="flex flex-col md:flex-row gap-6 mt-3">
+                  <div className="flex-1 flex flex-col gap-3 p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
                     <label className="flex items-center gap-2.5 cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        name="contrePersonnes" 
-                        checked={formData.contrePersonnes} 
-                        onChange={handleChange} 
-                        className="w-5 h-5 rounded border-gray-300 text-[#003366] focus:ring-[#003366]" 
-                      />
+                      <input type="checkbox" name="contrePersonnes" checked={formData.contrePersonnes} onChange={handleChange} className="w-5 h-5 rounded border-gray-300 text-[#003366] focus:ring-[#003366]" />
                       <span className="font-bold text-gray-700">{t.contrePersonnesLabel}</span>
                     </label>
+                    {formData.contrePersonnes && (
+                      <div className="relative animate-in fade-in slide-in-from-top-2 duration-300">
+                        <input type="number" name="montantPersonnes" min="0" step="0.01" placeholder="المبلغ المستخلص..." value={formData.montantPersonnes} onChange={handleChange} className={`${inputClassName} py-2.5 bg-gray-50 font-mono pl-14 border-gray-200`} />
+                        <span className="absolute top-1/2 -translate-y-1/2 left-3 text-gray-500 font-semibold bg-gray-200 px-2 py-1 rounded text-xs">MAD</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 flex flex-col gap-3 p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
                     <label className="flex items-center gap-2.5 cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        name="contreSocietes" 
-                        checked={formData.contreSocietes} 
-                        onChange={handleChange} 
-                        className="w-5 h-5 rounded border-gray-300 text-[#003366] focus:ring-[#003366]" 
-                      />
+                      <input type="checkbox" name="contreSocietes" checked={formData.contreSocietes} onChange={handleChange} className="w-5 h-5 rounded border-gray-300 text-[#003366] focus:ring-[#003366]" />
                       <span className="font-bold text-gray-700">{t.contreSocietesLabel}</span>
                     </label>
+                    {formData.contreSocietes && (
+                      <div className="relative animate-in fade-in slide-in-from-top-2 duration-300">
+                        <input type="number" name="montantSocietes" min="0" step="0.01" placeholder="المبلغ المستخلص..." value={formData.montantSocietes} onChange={handleChange} className={`${inputClassName} py-2.5 bg-gray-50 font-mono pl-14 border-gray-200`} />
+                        <span className="absolute top-1/2 -translate-y-1/2 left-3 text-gray-500 font-semibold bg-gray-200 px-2 py-1 rounded text-xs">MAD</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -401,7 +449,6 @@ export function ProductionCards() {
           </div>
         </div>
 
-        {/* Action Button */}
         <div className="mt-8 flex justify-end">
           <button type="submit" className="flex items-center gap-3 px-10 py-4 bg-[#003366] text-white rounded-xl text-lg font-bold hover:bg-[#004080] transition-colors shadow-lg hover:shadow-xl">
             <Save className="w-6 h-6" />

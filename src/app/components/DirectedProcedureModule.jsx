@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Upload, FileSpreadsheet, Pencil, Printer, FileText, CheckCircle2, Search, X, Plus, MapPin, Filter, Download, Loader2, LogOut } from 'lucide-react';
+import { Upload, FileSpreadsheet, Pencil, Printer, FileText, CheckCircle2, Search, X, Plus, MapPin, Filter, Download, Loader2, LogOut, ChevronRight, ChevronLeft } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 export function DirectedProcedureModule({ onLogout }) {
@@ -228,7 +228,9 @@ export function DirectedProcedureModule({ onLogout }) {
       title: 'جاري الاستيراد...',
       text: 'يتم الآن قراءة ومعالجة ملف Excel، قد يستغرق الأمر بضع ثوانٍ',
       allowOutsideClick: false,
-      didOpen: () => Swal.showLoading()
+      didOpen: () => {
+        Swal.showLoading();
+      }
     });
 
     const formData = new FormData();
@@ -614,7 +616,7 @@ export function DirectedProcedureModule({ onLogout }) {
   };
 
   return (
-    <div className="bg-gray-50/50 min-h-full font-sans" dir="rtl">
+    <div className="bg-transparent min-h-full font-sans" dir="rtl">
       <div className="max-w-[95%] mx-auto space-y-6 py-6">
         
         {/* Header & Actions */}
@@ -646,16 +648,6 @@ export function DirectedProcedureModule({ onLogout }) {
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}
               <span>استيراد ملف Excel</span>
             </button>
-
-            {onLogout && (
-              <button 
-                onClick={onLogout} 
-                className="flex items-center gap-2 px-6 py-3.5 bg-white text-red-600 border border-red-200 rounded-xl font-bold hover:bg-red-50 transition-all shadow-sm"
-              >
-                <LogOut className="w-5 h-5" />
-                <span>تسجيل الخروج</span>
-              </button>
-            )}
           </div>
         </div>
 
@@ -783,7 +775,6 @@ export function DirectedProcedureModule({ onLogout }) {
                             <button onClick={() => handleEditClick(row)} className="p-2 text-[#D4AF37] hover:bg-[#D4AF37]/10 rounded-lg transition-colors border border-transparent hover:border-[#D4AF37]/20" title="تعديل">
                               <Pencil className="w-4 h-4" />
                             </button>
-                            {/* زر الطباعة الفردية */}
                             <button onClick={() => handlePrintClick(row)} className="p-2 text-[#003366] hover:bg-[#003366]/10 rounded-lg transition-colors border border-transparent hover:border-[#003366]/20" title="تجهيز الطباعة (Word)">
                               <Printer className="w-4 h-4" />
                             </button>
@@ -803,9 +794,44 @@ export function DirectedProcedureModule({ onLogout }) {
                 عرض <span className="font-bold text-gray-700">{startIndex + 1}</span> إلى <span className="font-bold text-gray-700">{Math.min(endIndex, filteredData.length)}</span> من أصل <span className="font-bold text-gray-700">{filteredData.length}</span> سجلات
               </span>
               <div className="flex items-center gap-2">
-                <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className={`px-4 py-2 text-sm border rounded-lg transition-colors ${currentPage === 1 ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-400'}`}>السابق</button>
-                <span className="px-4 py-2 text-sm font-bold border border-[#003366] rounded-lg bg-[#003366] text-white">{currentPage} <span className="text-[#D4AF37] mx-1">/</span> {totalPages}</span>
-                <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages || totalPages === 0} className={`px-4 py-2 text-sm border rounded-lg transition-colors ${currentPage === totalPages || totalPages === 0 ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-400'}`}>التالي</button>
+                {/* --- تم تغيير الأزرار هنا فقط --- */}
+                <button 
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  className="p-2 rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-30 transition-all shadow-sm"
+                >
+                  <ChevronRight className="w-5 h-5 text-[#003366]" />
+                </button>
+
+                <div className="flex items-center gap-1">
+                  {[...Array(totalPages)].map((_, i) => {
+                    const page = i + 1;
+                    if (page === 1 || page === totalPages || (page >= currentPage - 2 && page <= currentPage + 2)) {
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`w-9 h-9 rounded-lg font-bold text-xs transition-all ${
+                            currentPage === page 
+                            ? 'bg-[#003366] text-[#D4AF37] shadow-lg' 
+                            : 'bg-white border text-gray-500 hover:bg-gray-100'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+
+                <button 
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  className="p-2 rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-30 transition-all shadow-sm"
+                >
+                  <ChevronLeft className="w-5 h-5 text-[#003366]" />
+                </button>
               </div>
             </div>
           )}
@@ -828,7 +854,6 @@ export function DirectedProcedureModule({ onLogout }) {
                   <input type="text" value={printData.documentType} onChange={(e) => setPrintData({...printData, documentType: e.target.value})} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-[#D4AF37] outline-none font-bold text-center text-xl text-red-700 bg-red-50/50" />
                 </div>
 
-                {/* الخيار يظهر في حال كان هناك أكثر من طرف في الملف */}
                 {printData.availableParties && printData.availableParties.length > 1 && (
                   <div className="space-y-1.5 md:col-span-2 bg-[#003366]/5 p-4 rounded-xl border border-[#003366]/10 mb-2">
                     <label className="block text-sm font-bold text-[#003366]">اختر الطرف المراد توجيه الإشعار إليه</label>

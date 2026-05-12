@@ -16,6 +16,7 @@ import { UserManagementModule } from './UserManagementModule';
 import DirectedProcedureModule from './DirectedProcedureModule';
 import CorrespondencesModule from './CorrespondencesModule';
 import { ProductionCards } from './ProductionCards';
+import ProceduresTabsContainer from './ProceduresTabsContainer';
 
 export function Dashboard({ onLogout }) {
   // 🔥 1. On récupère le VRAI rôle depuis la session de connexion
@@ -96,7 +97,7 @@ export function Dashboard({ onLogout }) {
           {activeMenu === 'production' && <ProductionCards />}
           {activeMenu === 'documents' && <DocumentGenerator />}
           {activeMenu === 'outstanding' && <OutstandingDebtsModule />}
-          {activeMenu === 'directed' && <DirectedProcedureModule />}
+          {activeMenu === 'directed' && <ProceduresTabsContainer />}
 
           {activeMenu === 'correspondences' && <CorrespondencesModule />}
 
