@@ -125,7 +125,6 @@ export function ProductionCards() {
         updatedData.selectedActions = [];
         setCurrentCategory('');
       }
-      // Vider les champs texte si la case est décochée
       if (name === 'pvPositif' && !checked) updatedData.pvPositifCount = '';
       if (name === 'pvNegatif' && !checked) updatedData.pvNegatifCount = '';
       if (name === 'contrePersonnes' && !checked) updatedData.montantPersonnes = '';
@@ -150,19 +149,51 @@ export function ProductionCards() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    alert(t.successMsg);
-    setFormData(prev => ({
-      ...prev, 
-      section: '', registre: '', selectedActions: [], dossiersNotifies: '',
-      dossiersExecutes: '', montantRecouvre: '', 
-      pvPositif: false, pvPositifCount: '', 
-      pvNegatif: false, pvNegatifCount: '', 
-      contrainte: '', dossiersAnnulation: '', dossiersIskatat: '',
-      montantDelegations: '', 
-      contrePersonnes: false, montantPersonnes: '', 
-      contreSocietes: false, montantSocietes: ''
-    }));
-    setCurrentCategory('');
+    Swal.fire({
+      title: 'جاري الحفظ...',
+      text: 'الرجاء الانتظار',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/production-cards', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${getToken()}`
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        Swal.fire({
+          icon: 'success',
+          title: t.successMsg,
+          confirmButtonColor: '#003366',
+          timer: 2000
+        });
+
+        // مسح الحقول بعد الحفظ مع الاحتفاظ بالتاريخ المختار واسم الموظف
+        setFormData(prev => ({
+          ...prev, 
+          registre: '', selectedActions: [], dossiersNotifies: '',
+          dossiersExecutes: '', montantRecouvre: '', 
+          pvPositif: false, pvPositifCount: '', 
+          pvNegatif: false, pvNegatifCount: '', 
+          contrainte: '', dossiersAnnulation: '', dossiersIskatat: '',
+          montantDelegations: '', contrePersonnes: false, montantPersonnes: '', 
+          contreSocietes: false, montantSocietes: ''
+        }));
+        setCurrentCategory('');
+      } else {
+        const errorData = await response.json();
+        Swal.fire({ icon: 'error', title: 'خطأ', text: errorData.message || 'حدث خطأ أثناء الحفظ', confirmButtonColor: '#003366' });
+      }
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'خطأ في الاتصال', text: 'تعذر الاتصال بالخادم', confirmButtonColor: '#003366' });
+    }
   };
 
   const inputClassName = "w-full p-3.5 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent bg-gray-50 transition-all text-[#003366] placeholder-gray-500 text-right";
@@ -310,7 +341,7 @@ export function ProductionCards() {
             </div>
           </div>
 
-          {/* 🔥 Card 3: Mesures Coercitives & PVs */}
+          {/* Card 3: Mesures Coercitives & PVs */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden lg:col-span-2">
             <div className="bg-gray-50 p-4 border-b border-gray-100 flex items-center gap-3">
               <ShieldAlert className="w-5 h-5 text-orange-600" />
@@ -318,7 +349,6 @@ export function ProductionCards() {
             </div>
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
               
-              {/* NOUVEAU BLOC : Nombre de PVs */}
               <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-col justify-center">
                 <label className={labelClassName}>{t.nombrePVsLabel}</label>
                 <div className="flex flex-col gap-4 mt-2">
@@ -352,7 +382,7 @@ export function ProductionCards() {
             </div>
           </div>
 
-          {/* 🔥 Card 4: Exécutions & Recouvrements */}
+          {/* Card 4: Exécutions & Recouvrements */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden lg:col-span-2">
             <div className="bg-gray-50 p-4 border-b border-gray-100 flex items-center gap-3">
               <DollarSign className="w-5 h-5 text-emerald-600" />
@@ -383,13 +413,10 @@ export function ProductionCards() {
                 </div>
               </div>
 
-              {/* NOUVEAU BLOC : المبالغ المستخلصة */}
               <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-col justify-center md:col-span-3">
                 <label className={labelClassName}>{t.montantRecouvreSuiteLabel}</label>
                 
                 <div className="flex flex-col md:flex-row gap-6 mt-3">
-                  
-                  {/* Option: Contre Personnes */}
                   <div className="flex-1 flex flex-col gap-3 p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
                     <label className="flex items-center gap-2.5 cursor-pointer">
                       <input type="checkbox" name="contrePersonnes" checked={formData.contrePersonnes} onChange={handleChange} className="w-5 h-5 rounded border-gray-300 text-[#003366] focus:ring-[#003366]" />
@@ -403,7 +430,6 @@ export function ProductionCards() {
                     )}
                   </div>
 
-                  {/* Option: Contre Sociétés */}
                   <div className="flex-1 flex flex-col gap-3 p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
                     <label className="flex items-center gap-2.5 cursor-pointer">
                       <input type="checkbox" name="contreSocietes" checked={formData.contreSocietes} onChange={handleChange} className="w-5 h-5 rounded border-gray-300 text-[#003366] focus:ring-[#003366]" />
@@ -416,7 +442,6 @@ export function ProductionCards() {
                       </div>
                     )}
                   </div>
-
                 </div>
               </div>
 
