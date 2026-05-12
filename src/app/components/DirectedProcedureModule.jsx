@@ -1,26 +1,28 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Upload, FileSpreadsheet, Pencil, Printer, FileText, CheckCircle2, Search, X, Plus, MapPin, Filter, Download, Loader2, LogOut } from 'lucide-react'; // أضفنا LogOut
+import { Upload, FileSpreadsheet, Pencil, Printer, FileText, CheckCircle2, Search, X, Plus, MapPin, Filter, Download, Loader2, LogOut } from 'lucide-react';
 import Swal from 'sweetalert2';
 
-// لاحظ أنني استقبلت onLogout هنا من الـ App.jsx
 export function DirectedProcedureModule({ onLogout }) {
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   
   // حالات البحث، الفلترة، والتقسيم
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedRole, setSelectedRole] = useState('');
+  const [selectedRole, setSelectedRole] = useState('المتهم');
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 25;
+  const ITEMS_PER_PAGE = 50;
+
+  // --- حالة التحديد للطباعة المجمعة ---
+  const [selectedIds, setSelectedIds] = useState([]);
 
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingRow, setEditingRow] = useState(null);
 
-  // Print Modal State
+  // Print Modal State (Print par Ligne)
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [printData, setPrintData] = useState({
-    documentType: 'مستعجل',
+    documentType: 'يوجه',
     suspectName: '',
     address: '',
     fileNumber: '',
@@ -28,14 +30,15 @@ export function DirectedProcedureModule({ onLogout }) {
     mainText: '',
     availableParties: [],
     availableAddresses: [],
-    selectedIndex: 0
+    availableRoles: [],
+    selectedIndex: 0,
+    isMultipleSuspects: false
   });
 
   const fileInputRef = useRef(null);
   const API_URL = 'http://127.0.0.1:8000/api/procedures';
 
-  // دالة مساعدة لجلب التوكن
-  const getToken = () => sessionStorage.getItem('token')
+  const getToken = () => sessionStorage.getItem('token');
 
   useEffect(() => {
     fetchData();
@@ -45,19 +48,17 @@ export function DirectedProcedureModule({ onLogout }) {
     setCurrentPage(1);
   }, [searchQuery, selectedRole, data]);
 
-  // 1. تحديث دالة جلب البيانات (إضافة التوكن)
   const fetchData = async () => {
     try {
       setIsLoading(true);
       const response = await fetch(API_URL, {
         headers: {
           'Accept': 'application/json',
-          'Authorization': `Bearer ${getToken()}` // <--- تم إضافة التوكن هنا
+          'Authorization': `Bearer ${getToken()}`
         }
       });
       
       if (response.status === 401) {
-        // إذا كان التوكن منتهي أو غير صالح، نوجهه لصفحة الدخول
         if (onLogout) onLogout();
         return;
       }
@@ -136,7 +137,6 @@ export function DirectedProcedureModule({ onLogout }) {
     });
   };
 
-  // 2. تحديث دالة الحفظ (إضافة التوكن)
   const handleSave = async () => {
     try {
       Swal.fire({
@@ -180,7 +180,7 @@ export function DirectedProcedureModule({ onLogout }) {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Authorization': `Bearer ${getToken()}` // <--- تم إضافة التوكن هنا
+          'Authorization': `Bearer ${getToken()}`
         },
         body: JSON.stringify(payload)
       });
@@ -220,7 +220,6 @@ export function DirectedProcedureModule({ onLogout }) {
     setEditingRow(null);
   };
 
-  // 3. تحديث دالة الاستيراد (إضافة التوكن)
   const handleExcelUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -229,9 +228,7 @@ export function DirectedProcedureModule({ onLogout }) {
       title: 'جاري الاستيراد...',
       text: 'يتم الآن قراءة ومعالجة ملف Excel، قد يستغرق الأمر بضع ثوانٍ',
       allowOutsideClick: false,
-      didOpen: () => {
-        Swal.showLoading();
-      }
+      didOpen: () => Swal.showLoading()
     });
 
     const formData = new FormData();
@@ -243,7 +240,7 @@ export function DirectedProcedureModule({ onLogout }) {
         body: formData,
         headers: { 
           'Accept': 'application/json',
-          'Authorization': `Bearer ${getToken()}` // <--- تم إضافة التوكن هنا
+          'Authorization': `Bearer ${getToken()}`
         }
       });
       const responseData = await response.json();
@@ -256,6 +253,7 @@ export function DirectedProcedureModule({ onLogout }) {
           confirmButtonColor: '#003366'
         });
         fetchData(); 
+        setSelectedIds([]);
       } else {
         Swal.fire({
           icon: 'error',
@@ -276,78 +274,153 @@ export function DirectedProcedureModule({ onLogout }) {
     }
   };
 
-  // --- دوال نافذة الطباعة (PRINT) ---
+  // ==========================================
+  // --- GÉNÉRATION DU DOCUMENT WORD (HTML) ---
+  // ==========================================
+  const generateWordHTML = (dataObject, signerName, signerRole) => {
+    let formattedMainText = dataObject.mainText.replace(/\n/g, '<br>');
+    formattedMainText = formattedMainText.replace('عاجـلا', '<u>عاجـلا</u>');
+    formattedMainText = formattedMainText.replace('عاجلا', '<u>عاجلا</u>');
+
+    return `
+      <table class="main-table" dir="rtl">
+        <tr>
+          <td class="right-column">
+            <p style="font-size: 14pt; font-weight: bold; line-height: 1.5; margin-bottom: 30px;">
+              المملكة المغربية<br>وزارة العدل<br>محكمة الاستئناف بطنجة<br>المحكمة الابتدائية بطنجة<br><br>وحدة التبليغ والتحصيل<br>المكتب 138 الطابق 2
+            </p>
+            <p style="font-size: 16pt; font-weight: bold; margin-bottom: 5px;">ملف زجري عدد:</p>
+            <p style="font-size: 16pt; font-weight: bold; margin-bottom: 40px;" dir="ltr">${dataObject.fileNumber}</p>
+            <div style="border: 1px solid #000; padding: 10px; text-align: center; margin-top: 20px;">
+              <p style="font-weight: bold; font-size: 12pt; text-decoration: underline; margin-bottom: 10px;">ملاحظة:</p>
+              <p style="font-size: 9pt; line-height: 1.5; text-align: justify; direction: rtl;">
+                طبقا للمقتضى الجديد المنصوص عليه في المادة 1-634 من قانون المسطرة الجنائية: يستفيد المحكوم عليه من <span style="background-color: #d9d9d9; font-weight: bold;">تخفيض الغرامة إلى الثلثين</span> شريطة أداء ما بذمته داخل أجل <span style="background-color: #d9d9d9; font-weight: bold;">30 يوما</span> يحتسب إبتداءا من تاريخ النطق بالأحكام الحضورية، أو من تاريخ تبليغ المقررات القضائية الغيابية أو بمثابة حضورية. كما تجدر الإشارة إلى أن هذا التخفيض لا يشمل باقي أنواع الديون العمومية.
+              </p>
+            </div>
+          </td>
+          <td class="left-column">
+            <p style="font-size: 36pt; font-weight: bold; text-decoration: underline; margin-bottom: 20px;">${dataObject.documentType}</p>
+            <p style="font-size: 16pt; font-weight: bold; margin-bottom: 40px; line-height: 1.5;">مـن رئيس كتابة الضبط لدى المحكمة<br>الابتدائية بطنجة</p>
+            <div style="text-align: right; margin-bottom: 40px;">
+              <p style="font-size: 14pt; font-weight: bold; margin-bottom: 15px;">إلى الســيد: <span style="font-size: 14pt;">${dataObject.suspectName}</span></p>
+              <p style="font-size: 14pt; font-weight: bold; line-height: 1.6;">السـاكن بـ: <span style="font-size: 14pt;">${(dataObject.address || '').replace(/\n/g, ' ')}</span></p>
+            </div>
+            <p style="font-size: 14pt; font-weight: bold; line-height: 1.8; text-align: center; margin-bottom: 40px;">${formattedMainText}</p>
+            <p style="font-size: 14pt; font-weight: bold; margin-bottom: 20px; text-align: center;">حرر بطنجة في: ${dataObject.issueDate}</p>
+            <p style="font-size: 14pt; font-weight: bold; line-height: 1.5; text-align: center;">عن رئيس مصلحة كتابة الضبط<br><br>${signerName}<br><span style="font-size: 12pt; font-weight: normal;">${signerRole}</span></p>
+          </td>
+        </tr>
+      </table>
+    `;
+  };
+
+  const getSignerInfo = () => {
+    let signerName = '.............................................';
+    let signerRole = 'كاتب الضبط'; 
+    const userStorage = sessionStorage.getItem('user');
+    if (userStorage) {
+      const userData = JSON.parse(userStorage);
+      const prenom = userData.prenom || userData?.clerk?.prenom || userData?.admin?.prenom || '';
+      const nom = userData.nom || userData?.clerk?.nom || userData?.admin?.nom || '';
+      if (prenom || nom) signerName = `${prenom} ${nom}`.trim();
+      else signerName = userData.name || 'الاسم غير متوفر'; 
+
+      let currentStatus = userData.type_responsabilite || userData?.clerk?.type_responsabilite || userData?.admin?.type_responsabilite;
+      if (currentStatus) signerRole = currentStatus;
+      else if (userData.role === 'admin') signerRole = 'رئيس الوحدة';
+    }
+    return { signerName, signerRole };
+  };
+
+  // ==========================================
+  // --- 1. PRINT PAR LIGNE (Fenêtre Modale) ---
+  // ==========================================
   const handlePrintClick = (row) => {
     const rolesArray = row.role ? row.role.split(' / ') : [];
     const addressesArray = row.address ? row.address.split('\n') : [];
     const partiesArray = row.parties || [];
 
-    let defaultIndex = rolesArray.findIndex(r => r.includes('المتهم'));
-    if (defaultIndex === -1) defaultIndex = 0;
+    // Recherche de TOUS les accusés
+    let suspectIndices = [];
+    rolesArray.forEach((r, idx) => {
+        if (r.includes('المتهم')) suspectIndices.push(idx);
+    });
 
-    const defaultName = partiesArray[defaultIndex] || partiesArray[0] || '';
-    const defaultAddress = addressesArray[defaultIndex] || row.address || '';
+    let defaultIndex = 0;
+    let isMultiple = false;
+
+    // Si plusieurs accusés, on prépare l'option "Tous les accusés de ce dossier"
+    if (suspectIndices.length > 1) {
+        defaultIndex = 'ALL';
+        isMultiple = true;
+    } else if (suspectIndices.length === 1) {
+        defaultIndex = suspectIndices[0];
+    }
 
     const today = new Date();
     const issueDate = today.toLocaleDateString('ar-MA', { year: 'numeric', month: 'long', day: 'numeric' });
 
     setPrintData({
-      documentType: 'مستعجل',
-      suspectName: defaultName,
-      address: defaultAddress,
+      documentType: 'يوجه',
+      suspectName: defaultIndex === 'ALL' ? 'سيتم إعداد إشعارات لجميع المتهمين' : (partiesArray[defaultIndex] || partiesArray[0] || ''),
+      address: defaultIndex === 'ALL' ? 'عناوين متعددة' : (addressesArray[defaultIndex] || row.address || ''),
       fileNumber: row.fileNumber || row.file_number,
       issueDate: issueDate,
       mainText: 'المطلوب منكم الحضور عاجـلا وبصفة شخصية إلى مقر هذه المحكمة قصد أداء ما بذمتكم قبل الإحالة على الإكراه البدني .',
       availableParties: partiesArray,
       availableAddresses: addressesArray,
-      selectedIndex: defaultIndex
+      availableRoles: rolesArray,
+      selectedIndex: defaultIndex,
+      isMultipleSuspects: isMultiple
     });
 
     setIsPrintModalOpen(true);
   };
 
   const handlePartySelectionChange = (e) => {
-    const index = parseInt(e.target.value, 10);
-    setPrintData({
-      ...printData,
-      selectedIndex: index,
-      suspectName: printData.availableParties[index] || '',
-      address: printData.availableAddresses[index] || printData.availableAddresses[0] || printData.address
-    });
+    const val = e.target.value;
+    if (val === 'ALL') {
+        setPrintData({
+            ...printData,
+            selectedIndex: 'ALL',
+            suspectName: 'سيتم إعداد إشعارات لجميع المتهمين',
+            address: 'عناوين متعددة'
+        });
+    } else {
+        const index = parseInt(val, 10);
+        setPrintData({
+            ...printData,
+            selectedIndex: index,
+            suspectName: printData.availableParties[index] || '',
+            address: printData.availableAddresses[index] || printData.availableAddresses[0] || printData.address
+        });
+    }
   };
 
-const handleDownloadWord = () => {
+  const handleDownloadWord = () => {
     try {
-      let formattedMainText = printData.mainText.replace(/\n/g, '<br>');
-      formattedMainText = formattedMainText.replace('عاجـلا', '<u>عاجـلا</u>');
-      formattedMainText = formattedMainText.replace('عاجلا', '<u>عاجلا</u>');
+      const { signerName, signerRole } = getSignerInfo();
+      let pages = [];
 
-      // --- جلب بيانات المستخدم المتصل من الـ LocalStorage للتوقيع ---
-      let signerName = '.............................................';
-      let signerRole = 'كاتب الضبط'; // قيمة افتراضية
-
-      const userStorage = sessionStorage.getItem('user');
-      if (userStorage) {
-        const userData = JSON.parse(userStorage);
-        
-        // 1. استخراج الاسم والنسب (للمدير أو لكاتب الضبط)
-        const prenom = userData.prenom || userData?.clerk?.prenom || userData?.admin?.prenom || '';
-        const nom = userData.nom || userData?.clerk?.nom || userData?.admin?.nom || '';
-        
-        if (prenom || nom) {
-          signerName = `${prenom} ${nom}`.trim();
-        } else {
-          signerName = userData.name || 'الاسم غير متوفر'; 
-        }
-
-        // 2. استخراج الدور / المسؤولية
-        let currentStatus = userData.type_responsabilite || userData?.clerk?.type_responsabilite || userData?.admin?.type_responsabilite;
-        if (currentStatus) {
-           signerRole = currentStatus;
-        } else if (userData.role === 'admin') {
-           signerRole = 'رئيس الوحدة'; // قيمة افتراضية إذا كان أدمن ولم تُحدد مسؤوليته
-        }
+      // Si l'utilisateur choisit d'imprimer TOUS les accusés de CETTE ligne
+      if (printData.selectedIndex === 'ALL') {
+          printData.availableRoles.forEach((role, idx) => {
+              if (role.includes('المتهم')) {
+                  const rowData = {
+                      ...printData,
+                      suspectName: printData.availableParties[idx] || printData.availableParties[0] || '',
+                      address: printData.availableAddresses[idx] || printData.address || ''
+                  };
+                  pages.push(generateWordHTML(rowData, signerName, signerRole));
+              }
+          });
+      } else {
+          // Un seul accusé
+          pages.push(generateWordHTML(printData, signerName, signerRole));
       }
+
+      // Concaténer avec des sauts de page
+      const allPagesHtml = pages.join("<br clear='all' style='mso-special-character:line-break;page-break-before:always' />");
 
       const wordDocumentHTML = `
         <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -355,100 +428,15 @@ const handleDownloadWord = () => {
           <meta charset='utf-8'>
           <title>إشعار بدون صائر التنفيذ</title>
           <style>
-            body { 
-              font-family: 'Arial', 'Simplified Arabic', sans-serif; 
-              direction: rtl; 
-            }
-            .main-table { 
-              width: 100%; 
-              border-collapse: collapse; 
-              margin-top: 10px;
-            }
-            .right-column { 
-              width: 35%; 
-              vertical-align: top; 
-              border-left: 1px solid #000; 
-              padding-left: 15px; 
-              text-align: center; 
-            }
-            .left-column { 
-              width: 65%; 
-              vertical-align: top; 
-              padding-right: 20px; 
-              text-align: center; /* توسيط محتوى العمود الأيسر */
-            }
-            p {
-              margin: 0;
-              padding: 0;
-            }
+            body { font-family: 'Arial', 'Simplified Arabic', sans-serif; direction: rtl; }
+            .main-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            .right-column { width: 35%; vertical-align: top; border-left: 1px solid #000; padding-left: 15px; text-align: center; }
+            .left-column { width: 65%; vertical-align: top; padding-right: 20px; text-align: center; }
+            p { margin: 0; padding: 0; }
           </style>
         </head>
         <body>
-          <table class="main-table" dir="rtl">
-            <tr>
-              <!-- العمود الأيمن (المعلومات الإدارية) -->
-              <td class="right-column">
-                <p style="font-size: 14pt; font-weight: bold; line-height: 1.5; margin-bottom: 30px;">
-                  المملكة المغربية<br>
-                  وزارة العدل<br>
-                  محكمة الاستئناف بطنجة<br>
-                  المحكمة الابتدائية بطنجة<br><br>
-                  وحدة التبليغ والتحصيل<br>
-                  المكتب 138 الطابق 2
-                </p>
-                
-                <p style="font-size: 16pt; font-weight: bold; margin-bottom: 5px;">
-                  ملف زجري عدد:
-                </p>
-                <p style="font-size: 16pt; font-weight: bold; margin-bottom: 40px;" dir="ltr">
-                  ${printData.fileNumber}
-                </p>
-                
-                <div style="border: 1px solid #000; padding: 10px; text-align: center; margin-top: 20px;">
-                  <p style="font-weight: bold; font-size: 12pt; text-decoration: underline; margin-bottom: 10px;">ملاحظة:</p>
-                  <p style="font-size: 9pt; line-height: 1.5; text-align: justify; direction: rtl;">
-                    طبقا للمقتضى الجديد المنصوص عليه في المادة 1-634 من قانون المسطرة الجنائية: يستفيد المحكوم عليه من <span style="background-color: #d9d9d9; font-weight: bold;">تخفيض الغرامة إلى الثلثين</span> شريطة أداء ما بذمته داخل أجل <span style="background-color: #d9d9d9; font-weight: bold;">30 يوما</span> يحتسب إبتداءا من تاريخ النطق بالأحكام الحضورية، أو من تاريخ تبليغ المقررات القضائية الغيابية أو بمثابة حضورية. كما تجدر الإشارة إلى أن هذا التخفيض لا يشمل باقي أنواع الديون العمومية.
-                  </p>
-                </div>
-              </td>
-
-              <!-- العمود الأيسر (المحتوى الرئيسي) -->
-              <td class="left-column">
-                <p style="font-size: 36pt; font-weight: bold; text-decoration: underline; margin-bottom: 20px;">
-                  ${printData.documentType}
-                </p>
-                
-                <p style="font-size: 16pt; font-weight: bold; margin-bottom: 40px; line-height: 1.5;">
-                  مـن رئيس كتابة الضبط لدى المحكمة<br>الابتدائية بطنجة
-                </p>
-                
-                <div style="text-align: right; margin-bottom: 40px;">
-                  <p style="font-size: 14pt; font-weight: bold; margin-bottom: 15px;">
-                    إلى الســيد: <span style="font-size: 14pt;">${printData.suspectName}</span>
-                  </p>
-                  
-                  <p style="font-size: 14pt; font-weight: bold; line-height: 1.6;">
-                    السـاكن بـ: <span style="font-size: 14pt;">${printData.address.replace(/\n/g, ' ')}</span>
-                  </p>
-                </div>
-                
-                <p style="font-size: 14pt; font-weight: bold; line-height: 1.8; text-align: center; margin-bottom: 40px;">
-                  ${formattedMainText}
-                </p>
-                
-                <p style="font-size: 14pt; font-weight: bold; margin-bottom: 20px; text-align: center;">
-                  حرر بطنجة في: ${printData.issueDate}
-                </p>
-                
-                <!-- التوقيع -->
-                <p style="font-size: 14pt; font-weight: bold; line-height: 1.5; text-align: center;">
-                  عن رئيس مصلحة كتابة الضبط<br><br>
-                  ${signerName}<br>
-                  <span style="font-size: 12pt; font-weight: normal;">${signerRole}</span>
-                </p>
-              </td>
-            </tr>
-          </table>
+          ${allPagesHtml}
         </body>
         </html>
       `;
@@ -457,7 +445,7 @@ const handleDownloadWord = () => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `إشعار بدون صائر التنفيذ-${printData.suspectName} - ${printData.fileNumber.replace(/\//g, '-')}.doc`;
+      link.download = `إشعار بدون صائر التنفيذ-${printData.fileNumber.replace(/\//g, '-')}.doc`;
       
       document.body.appendChild(link);
       link.click();
@@ -468,19 +456,118 @@ const handleDownloadWord = () => {
       Swal.fire({
         icon: 'success',
         title: 'تم التنزيل!',
-        text: 'تم تجهيز ملف Word وتنزيله بنجاح',
         confirmButtonColor: '#003366',
         timer: 2000
       });
       
     } catch (error) {
       console.error('Erreur:', error);
-      Swal.fire({
-        icon: 'error',
-        title: 'خطأ',
-        text: 'حدث خطأ أثناء إنشاء ملف Word',
-        confirmButtonColor: '#003366'
+      Swal.fire({ icon: 'error', title: 'خطأ', text: 'حدث خطأ أثناء إنشاء ملف Word', confirmButtonColor: '#003366' });
+    }
+  };
+
+  // ==========================================
+  // --- 2. BULK PRINT (Bouton pour les Checkboxes) ---
+  // ==========================================
+  const handleBulkPrint = () => {
+    if (selectedIds.length === 0) return;
+
+    Swal.fire({
+      title: 'جاري إنشاء الملف المجمع...',
+      text: 'الرجاء الانتظار قليلاً',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    try {
+      const { signerName, signerRole } = getSignerInfo();
+      const today = new Date();
+      const issueDate = today.toLocaleDateString('ar-MA', { year: 'numeric', month: 'long', day: 'numeric' });
+      const defaultMainText = 'المطلوب منكم الحضور عاجـلا وبصفة شخصية إلى مقر هذه المحكمة قصد أداء ما بذمتكم قبل الإحالة على الإكراه البدني .';
+
+      const selectedRows = data.filter(row => selectedIds.includes(row.id));
+      let pages = [];
+
+      selectedRows.forEach((row) => {
+        const rolesArray = row.role ? row.role.split(' / ') : [];
+        const addressesArray = row.address ? row.address.split('\n') : [];
+        const partiesArray = row.parties || [];
+
+        // ON CHERCHE TOUS LES ACCUSÉS POUR CE DOSSIER
+        let hasSuspect = false;
+        rolesArray.forEach((role, idx) => {
+            if (role.includes('المتهم')) {
+                hasSuspect = true;
+                const rowData = {
+                  documentType: 'يوجه',
+                  suspectName: partiesArray[idx] || partiesArray[0] || '',
+                  address: addressesArray[idx] || row.address || '',
+                  fileNumber: row.fileNumber || row.file_number,
+                  issueDate: issueDate,
+                  mainText: defaultMainText,
+                };
+                pages.push(generateWordHTML(rowData, signerName, signerRole));
+            }
+        });
+
+        // Sécurité: Si on ne trouve pas le mot 'المتهم', on prend le 1er pour éviter un dossier vide
+        if(!hasSuspect) {
+           const rowDataFallback = {
+              documentType: 'يوجه',
+              suspectName: partiesArray[0] || '',
+              address: addressesArray[0] || row.address || '',
+              fileNumber: row.fileNumber || row.file_number,
+              issueDate: issueDate,
+              mainText: defaultMainText,
+            };
+            pages.push(generateWordHTML(rowDataFallback, signerName, signerRole));
+        }
       });
+
+      const allPagesHtml = pages.join("<br clear='all' style='mso-special-character:line-break;page-break-before:always' />");
+
+      const wordDocumentHTML = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+          <meta charset='utf-8'>
+          <title>إشعارات مجمعة</title>
+          <style>
+            body { font-family: 'Arial', 'Simplified Arabic', sans-serif; direction: rtl; }
+            .main-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            .right-column { width: 35%; vertical-align: top; border-left: 1px solid #000; padding-left: 15px; text-align: center; }
+            .left-column { width: 65%; vertical-align: top; padding-right: 20px; text-align: center; }
+            p { margin: 0; padding: 0; }
+          </style>
+        </head>
+        <body>
+          ${allPagesHtml}
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob(['\ufeff', wordDocumentHTML], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `إجراءات_توجيه_مجمعة_${new Date().toISOString().slice(0, 10)}.doc`;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      setSelectedIds([]); 
+      Swal.fire({
+        icon: 'success',
+        title: 'تم التنزيل!',
+        text: 'تم تجهيز الملف المجمع بنجاح',
+        confirmButtonColor: '#003366',
+        timer: 2000
+      });
+
+    } catch (error) {
+      console.error(error);
+      Swal.fire({ icon: 'error', title: 'خطأ', text: 'حدث خطأ أثناء التجميع', confirmButtonColor: '#003366' });
     }
   };
 
@@ -514,6 +601,18 @@ const handleDownloadWord = () => {
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const paginatedData = filteredData.slice(startIndex, endIndex);
 
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === paginatedData.length && paginatedData.length > 0) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(paginatedData.map(item => item.id));
+    }
+  };
+
   return (
     <div className="bg-gray-50/50 min-h-full font-sans" dir="rtl">
       <div className="max-w-[95%] mx-auto space-y-6 py-6">
@@ -531,13 +630,23 @@ const handleDownloadWord = () => {
           </div>
           
           <div className="flex gap-3">
+            {/* زر الطباعة المجمعة */}
+            {selectedIds.length > 0 && (
+              <button 
+                onClick={handleBulkPrint} 
+                className="flex items-center gap-2 px-6 py-3.5 bg-emerald-600 text-white rounded-xl font-bold transition-all hover:bg-emerald-700 shadow-lg hover:shadow-xl active:scale-95 animate-in fade-in zoom-in duration-200"
+              >
+                <Printer className="w-5 h-5" />
+                <span>طباعة المحدد ({selectedIds.length})</span>
+              </button>
+            )}
+
             <input type="file" accept=".xlsx, .xls, .csv" ref={fileInputRef} onChange={handleExcelUpload} className="hidden" />
             <button onClick={() => fileInputRef.current.click()} disabled={isLoading} className={`flex items-center gap-2 px-6 py-3.5 bg-[#D4AF37] text-[#003366] rounded-xl font-bold transition-all ${isLoading ? 'opacity-50 cursor-wait' : 'hover:bg-[#C5A028] shadow-lg hover:shadow-xl active:scale-95'}`}>
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}
               <span>استيراد ملف Excel</span>
             </button>
 
-            {/* زر تسجيل الخروج */}
             {onLogout && (
               <button 
                 onClick={onLogout} 
@@ -579,6 +688,9 @@ const handleDownloadWord = () => {
             <table className="w-full text-sm text-right">
               <thead className="bg-[#003366]/5 text-[#003366] font-bold border-b border-[#003366]/10">
                 <tr>
+                  <th className="px-5 py-4 text-center w-12">
+                    <input type="checkbox" className="accent-[#D4AF37] w-4 h-4 cursor-pointer rounded" checked={selectedIds.length === paginatedData.length && paginatedData.length > 0} onChange={toggleSelectAll} />
+                  </th>
                   <th className="px-5 py-4 whitespace-nowrap">رقم الملف</th>
                   <th className="px-5 py-4">الطرف</th>
                   <th className="px-5 py-4">الصفة</th>
@@ -590,7 +702,7 @@ const handleDownloadWord = () => {
               <tbody className="divide-y divide-gray-100">
                 {isLoading ? (
                   <tr>
-                    <td colSpan="6" className="text-center py-20 text-gray-500">
+                    <td colSpan="7" className="text-center py-20 text-gray-500">
                       <div className="flex flex-col items-center justify-center gap-3">
                         <Loader2 className="w-10 h-10 animate-spin text-[#D4AF37]" />
                         <span className="font-bold text-[#003366]">جاري تحميل البيانات...</span>
@@ -599,38 +711,57 @@ const handleDownloadWord = () => {
                   </tr>
                 ) : paginatedData.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="text-center py-12 text-gray-500 font-medium flex flex-col items-center justify-center gap-2">
+                    <td colSpan="7" className="text-center py-12 text-gray-500 font-medium flex flex-col items-center justify-center gap-2">
                       <Search className="w-8 h-8 text-gray-300" />
                       <span>لا توجد بيانات مطابقة لبحثك</span>
                     </td>
                   </tr>
                 ) : (
                   paginatedData.map((row) => {
-                    const addresses = splitText(row.address, '\n');
-                    const decisions = splitText(row.decision, '\n');
-                    const roles = splitText(row.role, ' / ');
+                    const allRoles = splitText(row.role, ' / ');
+                    const allAddresses = splitText(row.address, '\n');
+                    const allDecisions = splitText(row.decision, '\n');
+                    const allParties = row.parties || [];
+
+                    const visibleIndices = allRoles
+                      .map((r, i) => ({ role: r, index: i }))
+                      .filter(item => !selectedRole || item.role.includes(selectedRole))
+                      .map(item => item.index);
+
+                    const displayParties = visibleIndices.map(i => allParties[i]).filter(p => p !== undefined);
+                    const displayRoles = visibleIndices.map(i => allRoles[i]).filter(r => r !== undefined);
+                    const displayAddresses = visibleIndices.map(i => allAddresses[i]).filter(a => a !== undefined);
+                    const displayDecisions = visibleIndices.map(i => allDecisions[i]).filter(d => d !== undefined);
 
                     return (
-                      <tr key={row.id} className="hover:bg-gray-50/50 transition-colors group">
+                      <tr key={row.id} className={`hover:bg-blue-50/40 transition-colors group ${selectedIds.includes(row.id) ? 'bg-blue-50/60' : ''}`}>
+                        <td className="px-5 py-5 text-center align-top">
+                          <input 
+                            type="checkbox" 
+                            className="accent-[#003366] w-4 h-4 cursor-pointer rounded mt-1"
+                            checked={selectedIds.includes(row.id)}
+                            onChange={() => toggleSelect(row.id)}
+                          />
+                        </td>
                         <td className="px-5 py-5 font-mono font-bold text-lg text-[#003366] whitespace-nowrap align-top">{row.fileNumber || row.file_number}</td>
                         <td className="px-5 py-5 align-top">
                           <div className="flex flex-col gap-2">
-                            {row.parties.map((party, pIndex) => (
+                            {displayParties.map((party, pIndex) => (
                               <span key={pIndex} className="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-bold bg-[#003366]/5 text-[#003366] border border-[#003366]/10 w-fit shadow-sm">{party}</span>
                             ))}
                           </div>
                         </td>
                         <td className="px-5 py-5 align-top">
                           <div className="flex flex-col gap-2">
-                            {roles.map((role, idx) => (
+                            {displayRoles.map((role, idx) => (
                               <span key={idx} className="inline-flex text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded w-fit border border-gray-200">{role}</span>
                             ))}
                           </div>
                         </td>
                         <td className="px-5 py-5 align-top">
                           <div className="flex flex-col">
-                            {addresses.map((addr, idx) => (
-                              <div key={idx} className={`py-2 flex items-start gap-2 ${idx !== addresses.length - 1 ? 'border-b border-gray-100 border-dashed' : ''}`}>
+                            {displayAddresses.map((addr, idx) => (
+                              <div key={idx} className={`py-2 flex items-start gap-2 ${idx !== displayAddresses.length - 1 ? 'border-b border-gray-100 border-dashed' : ''}`}>
                                 <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" />
                                 <span className="text-gray-600 text-xs leading-relaxed">{addr}</span>
                               </div>
@@ -639,8 +770,8 @@ const handleDownloadWord = () => {
                         </td>
                         <td className="px-5 py-5 align-top">
                           <div className="flex flex-col">
-                            {decisions.map((dec, idx) => (
-                              <div key={idx} className={`py-2 flex items-start gap-2 ${idx !== decisions.length - 1 ? 'border-b border-gray-100 border-dashed' : ''}`}>
+                            {displayDecisions.map((dec, idx) => (
+                              <div key={idx} className={`py-2 flex items-start gap-2 ${idx !== displayDecisions.length - 1 ? 'border-b border-gray-100 border-dashed' : ''}`}>
                                 <CheckCircle2 className="w-4 h-4 text-[#D4AF37] shrink-0 mt-0.5" />
                                 <span className="text-[#003366] text-xs font-bold leading-relaxed">{dec}</span>
                               </div>
@@ -652,6 +783,7 @@ const handleDownloadWord = () => {
                             <button onClick={() => handleEditClick(row)} className="p-2 text-[#D4AF37] hover:bg-[#D4AF37]/10 rounded-lg transition-colors border border-transparent hover:border-[#D4AF37]/20" title="تعديل">
                               <Pencil className="w-4 h-4" />
                             </button>
+                            {/* زر الطباعة الفردية */}
                             <button onClick={() => handlePrintClick(row)} className="p-2 text-[#003366] hover:bg-[#003366]/10 rounded-lg transition-colors border border-transparent hover:border-[#003366]/20" title="تجهيز الطباعة (Word)">
                               <Printer className="w-4 h-4" />
                             </button>
@@ -680,7 +812,7 @@ const handleDownloadWord = () => {
         </div>
       </div>
 
-      {/* --- نافذة الطباعة (PRINT MODAL) --- */}
+      {/* --- نافذة الطباعة الفردية (PRINT MODAL) --- */}
       {isPrintModalOpen && printData && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden my-8 border border-gray-100 relative animate-in fade-in zoom-in-95 duration-200">
@@ -696,10 +828,12 @@ const handleDownloadWord = () => {
                   <input type="text" value={printData.documentType} onChange={(e) => setPrintData({...printData, documentType: e.target.value})} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-[#D4AF37] outline-none font-bold text-center text-xl text-red-700 bg-red-50/50" />
                 </div>
 
+                {/* الخيار يظهر في حال كان هناك أكثر من طرف في الملف */}
                 {printData.availableParties && printData.availableParties.length > 1 && (
                   <div className="space-y-1.5 md:col-span-2 bg-[#003366]/5 p-4 rounded-xl border border-[#003366]/10 mb-2">
                     <label className="block text-sm font-bold text-[#003366]">اختر الطرف المراد توجيه الإشعار إليه</label>
                     <select value={printData.selectedIndex} onChange={handlePartySelectionChange} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-[#D4AF37] outline-none bg-white font-medium cursor-pointer">
+                      {printData.isMultipleSuspects && <option value="ALL">جميع المتهمين في هذا الملف</option>}
                       {printData.availableParties.map((party, idx) => <option key={idx} value={idx}>{party}</option>)}
                     </select>
                     <p className="text-xs text-gray-500 mt-2 font-medium">ملاحظة: سيتم جلب الاسم والعنوان الخاص بالطرف تلقائياً.</p>
@@ -707,13 +841,13 @@ const handleDownloadWord = () => {
                 )}
 
                 <div className="space-y-1.5 md:col-span-2">
-                  <label className="block text-sm font-bold text-[#003366]">إلى السيد (اسم المتهم)</label>
-                  <input type="text" value={printData.suspectName} onChange={(e) => setPrintData({...printData, suspectName: e.target.value})} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-[#D4AF37] outline-none font-bold text-lg" />
+                  <label className="block text-sm font-bold text-[#003366]">إلى السيد (اسم الطرف)</label>
+                  <input type="text" value={printData.suspectName} readOnly={printData.selectedIndex === 'ALL'} onChange={(e) => setPrintData({...printData, suspectName: e.target.value})} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-[#D4AF37] outline-none font-bold text-lg" />
                 </div>
 
                 <div className="space-y-1.5 md:col-span-2">
                   <label className="block text-sm font-bold text-[#003366]">الساكن بـ (العنوان)</label>
-                  <textarea value={printData.address} onChange={(e) => setPrintData({...printData, address: e.target.value})} rows={2} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-[#D4AF37] outline-none resize-none leading-relaxed"></textarea>
+                  <textarea value={printData.address} readOnly={printData.selectedIndex === 'ALL'} onChange={(e) => setPrintData({...printData, address: e.target.value})} rows={2} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-[#D4AF37] outline-none resize-none leading-relaxed"></textarea>
                 </div>
 
                 <div className="space-y-1.5">
@@ -743,7 +877,7 @@ const handleDownloadWord = () => {
         </div>
       )}
 
-      {/* --- نافذة التعديل (EDIT MODAL) المتقدمة --- */}
+      {/* --- نافذة التعديل (EDIT MODAL) --- */}
       {isEditModalOpen && editingRow && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden my-8 border border-gray-100 relative animate-in fade-in zoom-in-95 duration-200">

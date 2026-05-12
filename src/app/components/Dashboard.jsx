@@ -15,7 +15,6 @@ import { OutstandingDebtsModule } from './OutstandingDebtsModule';
 import { UserManagementModule } from './UserManagementModule';
 import DirectedProcedureModule from './DirectedProcedureModule';
 import CorrespondencesModule from './CorrespondencesModule';
-import HearingMinutesModule from './HearingMinutesModule';
 
 export function Dashboard({ onLogout }) {
   // 🔥 1. On récupère le VRAI rôle depuis la session de connexion
