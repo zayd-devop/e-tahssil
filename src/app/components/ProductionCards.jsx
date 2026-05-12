@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Activity, Info, Mail, ShieldAlert, DollarSign, Zap, ChevronDown, Check, X } from 'lucide-react';
+import { Save, Activity, Info, Mail, ShieldAlert, DollarSign, ChevronDown, X, Loader2 } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 export function ProductionCards() {
-  const todayDate = new Date().toISOString().split('T')[0];
+
+  // حالات جلب البيانات من الخادم
+  const [hierarchyData, setHierarchyData] = useState([]);
+  const [isLoadingHierarchy, setIsLoadingHierarchy] = useState(true);
 
   const [formData, setFormData] = useState({
     employeeName: '',
     section: '',
     registre: '',
+    todayDate: new Date().toISOString().split('T')[0], // التاريخ الافتراضي هو اليوم، لكنه الآن قابل للتعديل
     selectedActions: [], 
     dossiersNotifies: '',
     dossiersExecutes: '',
     montantRecouvre: '',
-    // 🔥 NOUVEAUX CHAMPS DÉDOUBLÉS
     pvPositif: false,
     pvPositifCount: '',
     pvNegatif: false,
@@ -37,33 +41,13 @@ export function ProductionCards() {
     successMsg: 'تم حفظ البطاقة بنجاح',
     
     card1Title: 'معلومات عامة',
-    dateLabel: 'تاريخ اليوم',
+    dateLabel: 'تاريخ الإنجاز', // تم تعديل التسمية قليلاً لتناسب أي تاريخ
     sectionLabel: 'الشعبة',
-    sections: ['شعبة التبليغ الزجري', 'شعبة التنفيذ الزجري', 'تصفية الصوائر'],
     registresLabel: 'مسك السجلات',
     registres: ['سجل العقوبات البدنية 512', 'سجل التنفيذات 604', 'سجل الانابات الواردة و الصادرة'],
 
     card2Title: 'العمل الإداري والتبليغ (الإجراءات المنجزة)',
     actionCategoryLabel: 'فئة الإجراءات',
-    actionsHierarchy: {
-      'شعبة التبليغ الزجري': {
-        'المعالجة الأولية': ['الاستقبالات والإجراءات', 'ضبط وفرز الملفات المحالة', 'تفصيل الأحكام بالنظام المعلوماتي'],
-        'عمليات التبليغ': ['إنجاز طيات التبليغ', 'الاستدعاءات', 'إرسالها إلى المفوضين القضائيين', 'تضمين مرجوعات شواهد التسليم'],
-        'مخالفات السير': ['معالجة مخالفات الرادار الثابت', 'استخلاص الأوامر بالدفع', 'تسجيل الملفات في نظام الاكسيل'],
-        'الإجراءات الخاصة': ['فتح المختصرات', 'فتح ملفات الإكراه البدني', 'التسجيل بالكناش العام', 'التحصيل خارج المحكمة']
-      },
-      'شعبة التنفيذ الزجري': {
-        'التنفيذ المباشر': ['مباشرة الاجراءات وتنفيد الملفات', 'تبليغ الأحكام والإنذارات', 'تسليم نسخ الأحكام'],
-        'الإنابات والمراسلات': ['ترتيب وفرز وفتح ملفات الانابات الواردة', 'استخراج الاشعار بدون صائر', 'المراسلات الادارية', 'اعداد انابات صوائر الرسوم التكميلية'],
-        'السندات والمختصرات': ['إعداد قوائم المختصرات', 'إعداد السندات التنفيذية', 'الأوامر بالدفع المستخلصة'],
-        'مخالفات السير': ['تضمين احكام مخالفات الرادار في EXCEL', 'الاستدعاءات', 'استخلاص السندات التنفيدية']
-      },
-      'تصفية الصوائر': {
-        'المعالجة والرسوم': ['ترتيب وفرز الملفات', 'تحديد وحساب الرسم القضائي', 'إعداد الأوامر التنفيذية', 'إعداد بيانات المبالغ المتحملة'],
-        'التضمين والمتابعة': ['إعداد الاستدعاءات', 'تضمين الكل في السجل العام والنظام المعلوماتي', 'فتح الملفات', 'نسخ الاحكام']
-      }
-    },
-    
     dependentFieldsHint: 'الحقول المرتبطة بالإنجازات اليومية:',
     dossiersNotifiesLabel: 'الملفات المبلغة',
     dossiersExecutesLabel: 'عدد الملفات المنفذة',
@@ -84,15 +68,15 @@ export function ProductionCards() {
     contreSocietesLabel: 'ضد الشركات',
   };
 
-  const currentSection = formData.section || t.sections[0];
+  const getToken = () => sessionStorage.getItem('token') || localStorage.getItem('token');
 
+  // جلب معلومات المستخدم
   useEffect(() => {
     const userStorage = sessionStorage.getItem('user');
     if (userStorage) {
       const userData = JSON.parse(userStorage);
       const prenom = userData.prenom || userData?.clerk?.prenom || userData?.admin?.prenom || '';
       const nom = userData.nom || userData?.clerk?.nom || userData?.admin?.nom || '';
-      
       let fullName = 'مستخدم';
       if (prenom || nom) {
         fullName = `${prenom} ${nom}`.trim();
@@ -102,6 +86,35 @@ export function ProductionCards() {
       setFormData(prev => ({ ...prev, employeeName: fullName }));
     }
   }, []);
+
+  // --- جلب هيكلة الشُعب والإجراءات من الخادم ---
+  useEffect(() => {
+    const fetchHierarchy = async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:8000/api/sections-hierarchy', {
+          headers: { 'Authorization': `Bearer ${getToken()}`, 'Accept': 'application/json' }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setHierarchyData(data);
+          if (data.length > 0) {
+            setFormData(prev => ({ ...prev, section: data[0].name }));
+          }
+        }
+      } catch (error) {
+        console.error("Erreur de chargement des sections:", error);
+      } finally {
+        setIsLoadingHierarchy(false);
+      }
+    };
+    fetchHierarchy();
+  }, []);
+
+  // استخراج الفئات والمهام بناءً على الاختيار الحالي
+  const selectedSectionData = hierarchyData.find(s => s.name === formData.section);
+  const availableCategories = selectedSectionData ? selectedSectionData.categories : [];
+  const selectedCategoryData = availableCategories.find(c => c.name === currentCategory);
+  const currentTasks = selectedCategoryData ? selectedCategoryData.actions : [];
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -134,9 +147,8 @@ export function ProductionCards() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Données envoyées : ", formData);
     
     alert(t.successMsg);
     setFormData(prev => ({
@@ -156,8 +168,9 @@ export function ProductionCards() {
   const inputClassName = "w-full p-3.5 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent bg-gray-50 transition-all text-[#003366] placeholder-gray-500 text-right";
   const labelClassName = "block text-sm font-semibold text-gray-700 mb-2 text-right";
 
-  const availableCategories = Object.keys(t.actionsHierarchy[currentSection] || {});
-  const currentTasks = currentCategory ? t.actionsHierarchy[currentSection][currentCategory] : [];
+  if (isLoadingHierarchy) {
+    return <div className="flex justify-center items-center h-64"><Loader2 className="w-10 h-10 animate-spin text-[#003366]" /></div>;
+  }
 
   return (
     <div className="bg-transparent max-w-5xl mx-auto mt-6" dir="rtl">
@@ -190,17 +203,25 @@ export function ProductionCards() {
             <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-5">
               <div>
                 <label className={labelClassName}>{t.dateLabel}</label>
-                <input type="date" value={todayDate} readOnly className={`${inputClassName} bg-gray-100 text-gray-500 cursor-not-allowed`} />
+                {/* تم تعديل حقل التاريخ هنا ليصبح قابلاً للاختيار */}
+                <input 
+                  type="date" 
+                  name="todayDate"
+                  value={formData.todayDate} 
+                  onChange={handleChange}
+                  className={`${inputClassName} bg-white cursor-pointer`}
+                  required
+                />
               </div>
               <div>
                 <label className={labelClassName}>{t.sectionLabel}</label>
-                <select name="section" value={formData.section || currentSection} onChange={handleChange} className={inputClassName} required>
-                  {t.sections.map((sec, idx) => (<option key={idx} value={sec}>{sec}</option>))}
+                <select name="section" value={formData.section} onChange={handleChange} className={`${inputClassName} bg-white cursor-pointer`} required>
+                  {hierarchyData.map((sec) => (<option key={sec.id} value={sec.name}>{sec.name}</option>))}
                 </select>
               </div>
               <div>
                 <label className={labelClassName}>{t.registresLabel}</label>
-                <select name="registre" value={formData.registre} onChange={handleChange} className={inputClassName}>
+                <select name="registre" value={formData.registre} onChange={handleChange} className={`${inputClassName} bg-white cursor-pointer`}>
                   <option value="">اختر السجل...</option>
                   {t.registres.map((reg, idx) => (<option key={idx} value={reg}>{reg}</option>))}
                 </select>
@@ -224,9 +245,9 @@ export function ProductionCards() {
                     {t.actionCategoryLabel}
                   </label>
                   <div className="relative">
-                    <select value={currentCategory} onChange={(e) => setCurrentCategory(e.target.value)} className={`${inputClassName} appearance-none truncate pl-10`}>
+                    <select value={currentCategory} onChange={(e) => setCurrentCategory(e.target.value)} className={`${inputClassName} bg-white appearance-none truncate pl-10 cursor-pointer`}>
                       <option value="">اختر الفئة...</option>
-                      {availableCategories.map((cat, idx) => (<option key={idx} value={cat}>{cat}</option>))}
+                      {availableCategories.map((cat) => (<option key={cat.id} value={cat.name}>{cat.name}</option>))}
                     </select>
                     <div className="absolute top-1/2 -translate-y-1/2 pointer-events-none left-4">
                       <ChevronDown className="w-5 h-5 text-gray-500" />
@@ -239,10 +260,10 @@ export function ProductionCards() {
                     <p className="text-gray-400 text-sm text-center mt-2">الرجاء اختيار فئة لعرض المهام المتاحة...</p>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {currentTasks.map((task, idx) => (
-                        <label key={idx} className="flex items-start gap-3 p-2 hover:bg-white rounded-lg cursor-pointer transition-colors border border-transparent hover:border-gray-200">
-                          <input type="checkbox" checked={formData.selectedActions.includes(task)} onChange={() => toggleAction(task)} className="mt-1 w-5 h-5 rounded border-gray-300 text-[#003366] focus:ring-[#003366]" />
-                          <span className="text-sm font-medium text-gray-700 leading-tight">{task}</span>
+                      {currentTasks.map((task) => (
+                        <label key={task.id} className="flex items-start gap-3 p-2 hover:bg-white rounded-lg cursor-pointer transition-colors border border-transparent hover:border-gray-200">
+                          <input type="checkbox" checked={formData.selectedActions.includes(task.name)} onChange={() => toggleAction(task.name)} className="mt-1 w-5 h-5 rounded border-gray-300 text-[#003366] focus:ring-[#003366]" />
+                          <span className="text-sm font-medium text-gray-700 leading-tight">{task.name}</span>
                         </label>
                       ))}
                     </div>
@@ -403,7 +424,6 @@ export function ProductionCards() {
           </div>
         </div>
 
-        {/* Action Button */}
         <div className="mt-8 flex justify-end">
           <button type="submit" className="flex items-center gap-3 px-10 py-4 bg-[#003366] text-white rounded-xl text-lg font-bold hover:bg-[#004080] transition-colors shadow-lg hover:shadow-xl">
             <Save className="w-6 h-6" />
