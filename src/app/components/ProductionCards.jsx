@@ -12,18 +12,19 @@ export function ProductionCards() {
     dossiersNotifies: '',
     dossiersExecutes: '',
     montantRecouvre: '',
-    nombrePVs: '',
+    // 🔥 NOUVEAUX CHAMPS DÉDOUBLÉS
     pvPositif: false,
+    pvPositifCount: '',
     pvNegatif: false,
+    pvNegatifCount: '',
     contrainte: '',
-    // 🔥 SÉPARATION ICI
     dossiersAnnulation: '',
     dossiersIskatat: '',
-    // -----------------
     montantDelegations: '',
-    montantRecouvreSuite: '',
     contrePersonnes: false,
-    contreSocietes: false
+    montantPersonnes: '',
+    contreSocietes: false,
+    montantSocietes: ''
   });
 
   const [currentCategory, setCurrentCategory] = useState('');
@@ -72,14 +73,11 @@ export function ProductionCards() {
     nombrePVsLabel: 'عدد المحاضر',
     pvPositifLabel: 'إيجابي',
     pvNegatifLabel: 'سلبي',
-    contrainteLabel: 'الإكراهات البدنية',
+    contrainteLabel: ' عدد الإكراهات البدنية',
 
     card4Title: 'تتمة التنفيذات والتحصيل',
-    // 🔥 NOUVEAUX LABELS SÉPARÉS
     dossiersAnnulationLabel: 'عدد الإلغاءات',
     dossiersIskatatLabel: 'عدد الإسقاطات',
-    dossierIstirdadatLabel: 'عدد الاستردادات ',
-    // ------------------------
     montantDelegationsLabel: 'مبالغ الإنابات الواردة (د.م)',
     montantRecouvreSuiteLabel: 'المبالغ المستخلصة',
     contrePersonnesLabel: 'ضد الأشخاص',
@@ -109,10 +107,17 @@ export function ProductionCards() {
     const { name, value, type, checked } = e.target;
     setFormData(prev => {
       const updatedData = { ...prev, [name]: type === 'checkbox' ? checked : value };
+      
       if (name === 'section') {
         updatedData.selectedActions = [];
         setCurrentCategory('');
       }
+      // Vider les champs texte si la case est décochée
+      if (name === 'pvPositif' && !checked) updatedData.pvPositifCount = '';
+      if (name === 'pvNegatif' && !checked) updatedData.pvNegatifCount = '';
+      if (name === 'contrePersonnes' && !checked) updatedData.montantPersonnes = '';
+      if (name === 'contreSocietes' && !checked) updatedData.montantSocietes = '';
+
       return updatedData;
     });
   };
@@ -138,11 +143,12 @@ export function ProductionCards() {
       ...prev, 
       section: '', registre: '', selectedActions: [], dossiersNotifies: '',
       dossiersExecutes: '', montantRecouvre: '', 
-      nombrePVs: '', pvPositif: false, pvNegatif: false, 
-      contrainte: '', 
-      dossiersAnnulation: '', dossiersIskatat: '', // Réinitialisation des deux champs
-      montantDelegations: '', montantRecouvreSuite: '', 
-      contrePersonnes: false, contreSocietes: false
+      pvPositif: false, pvPositifCount: '', 
+      pvNegatif: false, pvNegatifCount: '', 
+      contrainte: '', dossiersAnnulation: '', dossiersIskatat: '',
+      montantDelegations: '', 
+      contrePersonnes: false, montantPersonnes: '', 
+      contreSocietes: false, montantSocietes: ''
     }));
     setCurrentCategory('');
   };
@@ -171,14 +177,7 @@ export function ProductionCards() {
           <label className="block text-lg font-bold text-[#003366] mb-3 text-right">
             {t.employeeLabel} <span className="text-red-500">*</span>
           </label>
-          <input
-            type="text"
-            name="employeeName"
-            value={formData.employeeName}
-            readOnly
-            disabled
-            className="w-full p-4 text-base border-2 border-gray-200 rounded-lg bg-gray-100 text-[#003366] font-bold cursor-not-allowed transition-all text-right"
-          />
+          <input type="text" name="employeeName" value={formData.employeeName} readOnly disabled className="w-full p-4 text-base border-2 border-gray-200 rounded-lg bg-gray-100 text-[#003366] font-bold cursor-not-allowed transition-all text-right" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -290,29 +289,39 @@ export function ProductionCards() {
             </div>
           </div>
 
-          {/* Card 3: Mesures Coercitives & PVs */}
+          {/* 🔥 Card 3: Mesures Coercitives & PVs */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden lg:col-span-2">
             <div className="bg-gray-50 p-4 border-b border-gray-100 flex items-center gap-3">
               <ShieldAlert className="w-5 h-5 text-orange-600" />
               <h3 className="text-lg font-bold text-gray-800">{t.card3Title}</h3>
             </div>
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+              
+              {/* NOUVEAU BLOC : Nombre de PVs */}
               <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-col justify-center">
                 <label className={labelClassName}>{t.nombrePVsLabel}</label>
-                <div className="flex flex-col sm:flex-row gap-5 items-center mt-1">
-                  <input type="number" name="nombrePVs" min="0" value={formData.nombrePVs} onChange={handleChange} className={`${inputClassName} bg-white sm:w-1/2`} />
-                  <div className="flex items-center justify-center sm:justify-start gap-6 w-full sm:w-1/2">
-                    <label className="flex items-center gap-2.5 cursor-pointer">
+                <div className="flex flex-col gap-4 mt-2">
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2.5 cursor-pointer w-24">
                       <input type="checkbox" name="pvPositif" checked={formData.pvPositif} onChange={handleChange} className="w-5 h-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
                       <span className="font-bold text-gray-700">{t.pvPositifLabel}</span>
                     </label>
-                    <label className="flex items-center gap-2.5 cursor-pointer">
+                    {formData.pvPositif && (
+                      <input type="number" name="pvPositifCount" min="0" placeholder="العدد..." value={formData.pvPositifCount} onChange={handleChange} className={`${inputClassName} py-2 bg-white flex-1`} />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2.5 cursor-pointer w-24">
                       <input type="checkbox" name="pvNegatif" checked={formData.pvNegatif} onChange={handleChange} className="w-5 h-5 rounded border-gray-300 text-red-600 focus:ring-red-500" />
                       <span className="font-bold text-gray-700">{t.pvNegatifLabel}</span>
                     </label>
+                    {formData.pvNegatif && (
+                      <input type="number" name="pvNegatifCount" min="0" placeholder="العدد..." value={formData.pvNegatifCount} onChange={handleChange} className={`${inputClassName} py-2 bg-white flex-1`} />
+                    )}
                   </div>
                 </div>
               </div>
+
               <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-col justify-center">
                 <label className={labelClassName}>{t.contrainteLabel}</label>
                 <div className="mt-1">
@@ -322,7 +331,7 @@ export function ProductionCards() {
             </div>
           </div>
 
-          {/* 🔥 Card 4: Exécutions & Recouvrements (Grille à 3 colonnes) */}
+          {/* 🔥 Card 4: Exécutions & Recouvrements */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden lg:col-span-2">
             <div className="bg-gray-50 p-4 border-b border-gray-100 flex items-center gap-3">
               <DollarSign className="w-5 h-5 text-emerald-600" />
@@ -331,7 +340,6 @@ export function ProductionCards() {
             
             <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
               
-              {/* 1. الإلغاءات */}
               <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-col justify-center">
                 <label className={labelClassName}>{t.dossiersAnnulationLabel}</label>
                 <div className="mt-1">
@@ -339,7 +347,6 @@ export function ProductionCards() {
                 </div>
               </div>
 
-              {/* 2. الإسقاطات (Nouveau) */}
               <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-col justify-center">
                 <label className={labelClassName}>{t.dossiersIskatatLabel}</label>
                 <div className="mt-1">
@@ -347,53 +354,48 @@ export function ProductionCards() {
                 </div>
               </div>
               
-              {/* 3. الإنابات */}
-             <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-col justify-center">
-                <label className={labelClassName}>{t.dossierIstirdadatLabel}</label>
+              <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-col justify-center">
+                <label className={labelClassName}>{t.montantDelegationsLabel}</label>
                 <div className="relative mt-1">
-                  <input type="number" name="dossierIstirdadat" min="0" step="0.01" value={formData.dossierIstirdadat} onChange={handleChange} className={`${inputClassName} bg-white font-mono `} />
+                  <input type="number" name="montantDelegations" min="0" step="0.01" value={formData.montantDelegations} onChange={handleChange} className={`${inputClassName} bg-white font-mono pl-14`} />
+                  <span className="absolute top-1/2 -translate-y-1/2 left-4 text-gray-500 font-semibold bg-gray-100 px-2 py-1 rounded text-xs">MAD</span>
                 </div>
               </div>
 
-              {/* 4. المبالغ المستخلصة (Pleine largeur sur 3 colonnes) */}
+              {/* NOUVEAU BLOC : المبالغ المستخلصة */}
               <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-col justify-center md:col-span-3">
                 <label className={labelClassName}>{t.montantRecouvreSuiteLabel}</label>
-                <div className="flex flex-col sm:flex-row gap-5 items-center mt-1">
-                  <div className="relative w-full sm:w-1/2">
-                    <input 
-                      type="number" 
-                      name="montantRecouvreSuite" 
-                      min="0" 
-                      step="0.01" 
-                      value={formData.montantRecouvreSuite} 
-                      onChange={handleChange} 
-                      className={`${inputClassName} bg-white font-mono pl-14`} 
-                    />
-                    <span className="absolute top-1/2 -translate-y-1/2 left-4 text-gray-500 font-semibold bg-gray-100 px-2 py-1 rounded text-xs">MAD</span>
-                  </div>
+                
+                <div className="flex flex-col md:flex-row gap-6 mt-3">
                   
-                  <div className="flex items-center justify-center sm:justify-start gap-6 w-full sm:w-1/2">
+                  {/* Option: Contre Personnes */}
+                  <div className="flex-1 flex flex-col gap-3 p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
                     <label className="flex items-center gap-2.5 cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        name="contrePersonnes" 
-                        checked={formData.contrePersonnes} 
-                        onChange={handleChange} 
-                        className="w-5 h-5 rounded border-gray-300 text-[#003366] focus:ring-[#003366]" 
-                      />
+                      <input type="checkbox" name="contrePersonnes" checked={formData.contrePersonnes} onChange={handleChange} className="w-5 h-5 rounded border-gray-300 text-[#003366] focus:ring-[#003366]" />
                       <span className="font-bold text-gray-700">{t.contrePersonnesLabel}</span>
                     </label>
+                    {formData.contrePersonnes && (
+                      <div className="relative animate-in fade-in slide-in-from-top-2 duration-300">
+                        <input type="number" name="montantPersonnes" min="0" step="0.01" placeholder="المبلغ المستخلص..." value={formData.montantPersonnes} onChange={handleChange} className={`${inputClassName} py-2.5 bg-gray-50 font-mono pl-14 border-gray-200`} />
+                        <span className="absolute top-1/2 -translate-y-1/2 left-3 text-gray-500 font-semibold bg-gray-200 px-2 py-1 rounded text-xs">MAD</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Option: Contre Sociétés */}
+                  <div className="flex-1 flex flex-col gap-3 p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
                     <label className="flex items-center gap-2.5 cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        name="contreSocietes" 
-                        checked={formData.contreSocietes} 
-                        onChange={handleChange} 
-                        className="w-5 h-5 rounded border-gray-300 text-[#003366] focus:ring-[#003366]" 
-                      />
+                      <input type="checkbox" name="contreSocietes" checked={formData.contreSocietes} onChange={handleChange} className="w-5 h-5 rounded border-gray-300 text-[#003366] focus:ring-[#003366]" />
                       <span className="font-bold text-gray-700">{t.contreSocietesLabel}</span>
                     </label>
+                    {formData.contreSocietes && (
+                      <div className="relative animate-in fade-in slide-in-from-top-2 duration-300">
+                        <input type="number" name="montantSocietes" min="0" step="0.01" placeholder="المبلغ المستخلص..." value={formData.montantSocietes} onChange={handleChange} className={`${inputClassName} py-2.5 bg-gray-50 font-mono pl-14 border-gray-200`} />
+                        <span className="absolute top-1/2 -translate-y-1/2 left-3 text-gray-500 font-semibold bg-gray-200 px-2 py-1 rounded text-xs">MAD</span>
+                      </div>
+                    )}
                   </div>
+
                 </div>
               </div>
 
