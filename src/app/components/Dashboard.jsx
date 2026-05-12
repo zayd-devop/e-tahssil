@@ -5,7 +5,7 @@ import { KPICards } from './KPICards';
 import { DataTable } from './DataTable';
 import { FileDetailsModal } from './FileDetailsModal';
 import { NotificationPanel } from './NotificationPanel';
-import { ProductionCards } from './ProductionCards';
+
 import { DocumentGenerator } from './DocumentGenerator';
 import { RecouvrementForm } from './RecouvrementForm';
 import { NotificationForm } from './NotificationForm';
@@ -15,6 +15,7 @@ import { OutstandingDebtsModule } from './OutstandingDebtsModule';
 import { UserManagementModule } from './UserManagementModule';
 import DirectedProcedureModule from './DirectedProcedureModule';
 import CorrespondencesModule from './CorrespondencesModule';
+import { ProductionCards } from './ProductionCards';
 
 export function Dashboard({ onLogout }) {
   // 🔥 1. On récupère le VRAI rôle depuis la session de connexion
