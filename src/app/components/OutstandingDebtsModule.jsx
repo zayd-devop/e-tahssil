@@ -8,7 +8,7 @@ export function OutstandingDebtsModule() {
   const [searchQuery, setSearchQuery] = useState('');
   
   // 👈 NOUVEAU : État pour l'année sélectionnée (par défaut 2024 ou vide pour "Toutes")
-  const [selectedYear, setSelectedYear] = useState('2024');
+  const [selectedYear, setSelectedYear] = useState('');
   
   // 2. États pour les données de l'API
   const [data, setData] = useState([]);
@@ -23,18 +23,26 @@ export function OutstandingDebtsModule() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
 
-  // Revenir à la page 1 quand on change de recherche ou d'année
+  // Revenir à la page 1 quand on change de recherche, d'année ou d'onglet
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedYear]);
+  }, [searchQuery, selectedYear, activeTab]);
+
+  // 💡 Fonction utilitaire pour obtenir le bon point de terminaison API selon l'onglet
+  const getApiEndpoint = () => {
+    if (activeTab === 'supplementary') return 'supplementary-fees';
+    if (activeTab === 'judicial_assistance') return 'judicial-assistance'; // Pour plus tard
+    return 'outstanding-debts'; // Par défaut
+  };
 
   // 4. Fonction pour charger les données depuis Laravel
   const fetchDebts = async () => {
     try {
       setIsLoading(true);
-      const url = `http://127.0.0.1:8000/api/outstanding-debts?year=${selectedYear}`;
       
-      // 👇 التعديل الإجباري هنا 👇
+      // 🔥 L'URL est maintenant dynamique !
+      const url = `http://127.0.0.1:8000/api/${getApiEndpoint()}?year=${selectedYear}`;
+      
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -53,15 +61,16 @@ export function OutstandingDebtsModule() {
     } catch (err) {
       console.error("Erreur lors de la récupération des données:", err);
       setError("تعذر تحميل البيانات. يرجى التحقق من الخادم.");
+      setData([]); // On vide les données en cas d'erreur
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Recharger les données dès que l'année change
+  // 🔥 Recharger les données dès que l'année OU l'onglet change
   useEffect(() => {
     fetchDebts();
-  }, [selectedYear]);
+  }, [selectedYear, activeTab]);
 
   // 5. Fonction d'importation Excel
   const handleFileUpload = async (event) => {
@@ -91,15 +100,16 @@ export function OutstandingDebtsModule() {
     });
 
     try {
-      console.log(sessionStorage.getItem('token'))
-      const response = await fetch('http://127.0.0.1:8000/api/outstanding-debts/import', {
+      // 🔥 L'URL d'importation est aussi dynamique !
+      const url = `http://127.0.0.1:8000/api/${getApiEndpoint()}/import`;
+
+      const response = await fetch(url, {
         method: 'POST',
         body: formData,
         headers: {
           'Accept': 'application/json',
           'Authorization': `Bearer ${sessionStorage.getItem('token')}`
         },
-        
       });
 
       if (!response.ok) {
@@ -150,22 +160,25 @@ export function OutstandingDebtsModule() {
 
   // 6. Logique de filtrage (Recherche)
   // 6. Logique de filtrage ultra-synchronisée (Année + Recherche)
-const filteredData = data.filter((row) => {
-  // A. Filtrage par année : 
-  // Si "كل السنوات" est sélectionné (selectedYear vide), on laisse passer tout.
-  // Sinon, on vérifie que l'année du dossier correspond à l'année choisie.
-  const yearMatch = !selectedYear || String(row.file_year) === String(selectedYear);
-  
-  // B. Filtrage par recherche :
-  const query = searchQuery.toLowerCase();
-  const nameMatch = row.fullName ? row.fullName.toLowerCase().includes(query) : false;
-  const numberMatch = row.collectionFileNumber ? row.collectionFileNumber.toLowerCase().includes(query) : false;
-  
-  const searchMatch = !searchQuery || nameMatch || numberMatch;
+  const filteredData = data.filter((row) => {
+    // A. Filtrage par année : 
+    // Si "كل السنوات" est sélectionné (selectedYear vide), on laisse passer tout.
+    // Sinon, on vérifie que l'année du dossier correspond à l'année choisie.
+    // 🔥 LE CORRECTIF FRONTEND EST ICI :
+    // On valide si l'année correspond, OU si l'année est écrite au début du numéro de dossier (ex: "2016/14")
+    const yearMatch = !selectedYear || 
+                      String(row.file_year) === String(selectedYear) || 
+                      (row.collectionFileNumber && String(row.collectionFileNumber).includes(String(selectedYear)));
+    // B. Filtrage par recherche :
+    const query = searchQuery.toLowerCase();
+    const nameMatch = row.fullName ? row.fullName.toLowerCase().includes(query) : false;
+    const numberMatch = row.collectionFileNumber ? row.collectionFileNumber.toLowerCase().includes(query) : false;
+    
+    const searchMatch = !searchQuery || nameMatch || numberMatch;
 
-  // Le dossier ne s'affiche que s'il respecte l'année ET la recherche
-  return yearMatch && searchMatch;
-});
+    // Le dossier ne s'affiche que s'il respecte l'année ET la recherche
+    return yearMatch && searchMatch;
+  });
 
   // Logique mathématique de la pagination
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
@@ -199,17 +212,23 @@ const filteredData = data.filter((row) => {
               >
                 <option value="">كل السنوات</option>
 {/* Génération dynamique de 2000 jusqu'à l'année en cours */}
-{(() => {
-  const startYear = 2000;
-  const currentYear = new Date().getFullYear();
-  const totalYears = currentYear - startYear + 1;
 
-  return Array.from({ length: totalYears }, (_, i) => startYear + i)
-    .reverse()
-    .map(year => (
-      <option key={year} value={year}>سنة {year}</option>
-    ));
-})()}
+                {(() => {
+                  const startYear = 2000;
+                  
+                  // On récupère l'année actuelle, et on ajoute +5 ans dans le futur
+                  // Ainsi, même en 2026, le menu affichera jusqu'à 2031 !
+                  const maxYear = new Date().getFullYear() + 5; 
+                  
+                  const totalYears = maxYear - startYear + 1;
+
+                  return Array.from({ length: totalYears }, (_, i) => startYear + i)
+                    .reverse() // Pour avoir les années les plus récentes en haut
+                    .map(year => (
+                      <option key={year} value={year}>سنة {year}</option>
+                    ));
+                })()}
+                {/* 👆 ---------------------- 👆 */}
               </select>
               <Calendar className="w-5 h-5 text-[#D4AF37] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>

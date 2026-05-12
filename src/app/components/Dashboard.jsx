@@ -99,8 +99,6 @@ export function Dashboard({ onLogout }) {
 
           {activeMenu === 'correspondences' && <CorrespondencesModule />}
 
-          {activeMenu === 'hearing' && <HearingMinutesModule />}
-
           {/* {activeMenu === 'recouvrement' && <RecouvrementForm />}
           
           {activeMenu === 'notification' && <NotificationForm />} */}
