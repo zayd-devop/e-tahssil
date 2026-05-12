@@ -8,7 +8,7 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
   const [formData, setFormData] = useState({ identifier: '', password: '', rememberMe: false });
 
   // رابط الـ API (تأكد من أنه يطابق مسار مشروع Laravel)
-  const API_URL = 'http://127.0.0.1:8000/api';
+  const API_URL = import.meta.env.VITE_API_URL ||'http://127.0.0.1:8000/api';
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -20,10 +20,9 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true); // تشغيل أيقونة التحميل
+    setIsLoading(true);
 
     try {
-      // إرسال الطلب إلى Laravel API
       const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
         headers: {
@@ -31,7 +30,7 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          email: formData.identifier, // نرسل الـ identifier على أنه email ليتوافق مع Laravel
+          email: formData.identifier,
           password: formData.password
         })
       });
@@ -39,19 +38,20 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
       const data = await response.json();
 
       if (response.ok) {
-        // 1. حفظ التوكن (Token) في المتصفح لاستخدامه لاحقاً في الطلبات المحمية
+        // 1. Sauvegarde des tokens et infos utilisateur
         sessionStorage.setItem('token', data.access_token);
         sessionStorage.setItem('user', JSON.stringify(data.user));
-
-        // 2. تحديد الصلاحية (يمكنك لاحقاً جلبها من قاعدة البيانات data.user.role)
-        const identifier = formData.identifier.toLowerCase();
-        if (identifier.includes('clerk') || identifier.includes('كاتب') || identifier.includes('sarah')) {
-          onRoleChange('clerk');
-        } else {
-          onRoleChange('admin'); // الافتراضي
-        }
         
-        // 3. إشعار النجاح والدخول
+        // 🔥 2. LA CORRECTION EST ICI : 
+        // On récupère le vrai rôle depuis la base de données et on le sauvegarde !
+        const userRole = data.user.role;
+        sessionStorage.setItem('userRole', userRole); 
+
+        // On informe le composant parent du rôle exact
+        onRoleChange(userRole); 
+        // ---------------------------------------------------------
+        
+        // 3. Notification de succès
         Swal.fire({
           icon: 'success',
           title: 'مرحباً بك!',
@@ -62,7 +62,6 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
 
         onLogin();
       } else {
-        // إذا كانت البيانات خاطئة (401 Unauthorized)
         Swal.fire({
           icon: 'error',
           title: 'فشل الدخول',
@@ -72,7 +71,6 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
       }
     } catch (error) {
       console.error('Login Error:', error);
-      // إذا كان السيرفر متوقفاً
       Swal.fire({
         icon: 'error',
         title: 'خطأ في الاتصال',
@@ -80,7 +78,7 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
         confirmButtonColor: '#003366'
       });
     } finally {
-      setIsLoading(false); // إيقاف أيقونة التحميل
+      setIsLoading(false);
     }
   };
 
@@ -104,12 +102,12 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
             مرحباً بكم  
           </h1>
           <p className="text-lg text-[#D4AF37] font-medium tracking-widest uppercase mb-8">
-             القضاء الاستعجالي 
+            نظام التبليغ والتحصيل
           </p>
           <div className="w-16 h-1 bg-[#D4AF37] rounded-full" />
           
           <div className="absolute bottom-8 text-sm text-gray-400 font-medium">
-            © {new Date().getFullYear()} شعبة القضاء الاستعجالي.
+            © {new Date().getFullYear()} شعبة التبليغ والتحصيل.
           </div>
         </div>
       </div>
@@ -127,7 +125,7 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
                   <Shield className="w-8 h-8 text-[#003366] -rotate-3" />
                 </div>
                 <h2 className="text-3xl font-bold text-[#003366] mb-2">تسجيل الدخول</h2>
-                <p className="text-gray-500 text-sm leading-relaxed">الولوج إلى نظام القضاء الاستعجالي</p>
+                <p className="text-gray-500 text-sm leading-relaxed">الولوج إلى نظام التبليغ والتحصيل</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -227,7 +225,7 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
             <div className="bg-white p-4 text-center border-t border-gray-100">
               <p className="text-xs text-[#0A2540] font-medium flex items-center justify-center gap-1.5">
                 <Lock className="w-3.5 h-3.5" />
-                فضاء مشفر ومؤمن بالكامل • شعبة القضاء الاستعجالي
+                فضاء مشفر ومؤمن بالكامل • شعبة التبليغ والتحصيل
               </p>
             </div>
           </div>
