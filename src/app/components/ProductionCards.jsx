@@ -62,7 +62,7 @@ export function ProductionCards() {
     card4Title: 'تتمة التنفيذات والتحصيل',
     dossiersAnnulationLabel: 'عدد الإلغاءات',
     dossiersIskatatLabel: 'عدد الإسقاطات',
-    montantDelegationsLabel: 'مبالغ الإنابات الواردة (د.م)',
+    montantDelegationsLabel: 'عدد الإستردادات',
     montantRecouvreSuiteLabel: 'المبالغ المستخلصة',
     contrePersonnesLabel: 'ضد الأشخاص',
     contreSocietesLabel: 'ضد الشركات',
@@ -408,43 +408,11 @@ export function ProductionCards() {
               <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-col justify-center">
                 <label className={labelClassName}>{t.montantDelegationsLabel}</label>
                 <div className="relative mt-1">
-                  <input type="number" name="montantDelegations" min="0" step="0.01" value={formData.montantDelegations} onChange={handleChange} className={`${inputClassName} bg-white font-mono pl-14`} />
-                  <span className="absolute top-1/2 -translate-y-1/2 left-4 text-gray-500 font-semibold bg-gray-100 px-2 py-1 rounded text-xs">MAD</span>
+                  <input type="number" name="montantDelegations" min="0" step="0.01" value={formData.montantDelegations} onChange={handleChange} className={inputClassName} />
                 </div>
               </div>
 
-              <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-col justify-center md:col-span-3">
-                <label className={labelClassName}>{t.montantRecouvreSuiteLabel}</label>
-                
-                <div className="flex flex-col md:flex-row gap-6 mt-3">
-                  <div className="flex-1 flex flex-col gap-3 p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
-                    <label className="flex items-center gap-2.5 cursor-pointer">
-                      <input type="checkbox" name="contrePersonnes" checked={formData.contrePersonnes} onChange={handleChange} className="w-5 h-5 rounded border-gray-300 text-[#003366] focus:ring-[#003366]" />
-                      <span className="font-bold text-gray-700">{t.contrePersonnesLabel}</span>
-                    </label>
-                    {formData.contrePersonnes && (
-                      <div className="relative animate-in fade-in slide-in-from-top-2 duration-300">
-                        <input type="number" name="montantPersonnes" min="0" step="0.01" placeholder="المبلغ المستخلص..." value={formData.montantPersonnes} onChange={handleChange} className={`${inputClassName} py-2.5 bg-gray-50 font-mono pl-14 border-gray-200`} />
-                        <span className="absolute top-1/2 -translate-y-1/2 left-3 text-gray-500 font-semibold bg-gray-200 px-2 py-1 rounded text-xs">MAD</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex-1 flex flex-col gap-3 p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
-                    <label className="flex items-center gap-2.5 cursor-pointer">
-                      <input type="checkbox" name="contreSocietes" checked={formData.contreSocietes} onChange={handleChange} className="w-5 h-5 rounded border-gray-300 text-[#003366] focus:ring-[#003366]" />
-                      <span className="font-bold text-gray-700">{t.contreSocietesLabel}</span>
-                    </label>
-                    {formData.contreSocietes && (
-                      <div className="relative animate-in fade-in slide-in-from-top-2 duration-300">
-                        <input type="number" name="montantSocietes" min="0" step="0.01" placeholder="المبلغ المستخلص..." value={formData.montantSocietes} onChange={handleChange} className={`${inputClassName} py-2.5 bg-gray-50 font-mono pl-14 border-gray-200`} />
-                        <span className="absolute top-1/2 -translate-y-1/2 left-3 text-gray-500 font-semibold bg-gray-200 px-2 py-1 rounded text-xs">MAD</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
+            
             </div>
           </div>
         </div>
