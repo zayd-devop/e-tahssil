@@ -64,7 +64,7 @@ export default function ProceduresTabsContainer({ onLogout }) {
             <FinancialFeesModule 
               type="complementary" 
               title="الرسوم التكميلية" 
-              tableHeaderTitle="رقم التصفية" 
+              tableHeaderTitle="رقم تصفية ر.ت" 
             />
           </div>
         )}
@@ -74,7 +74,7 @@ export default function ProceduresTabsContainer({ onLogout }) {
             <FinancialFeesModule 
               type="legal_aid" 
               title="صوائر المساعدة القضائية" 
-              tableHeaderTitle="رقم التصفية" 
+              tableHeaderTitle="رقم تصفية م.ق" 
             />
           </div>
         )}

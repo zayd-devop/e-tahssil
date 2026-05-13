@@ -485,7 +485,7 @@ export function DirectedProcedureModule({ onLogout }) {
       const { signerName, signerRole } = getSignerInfo();
       const today = new Date();
       const issueDate = today.toLocaleDateString('ar-MA', { year: 'numeric', month: 'long', day: 'numeric' });
-      const defaultMainText = 'المطلوب منكم الحضور عاجـلا وبصفة شخصية إلى مقر هذه المحكمة قصد أداء ما بذمتكم قبل الإحالة على الإكراه البدني .';
+      const defaultMainText = 'المطلوب منكم الحضور شخصيا إلى مقر هذه المحكمة في أقرب الآجال لأمر يهمكم والسلام .';
 
       const selectedRows = data.filter(row => selectedIds.includes(row.id));
       let pages = [];

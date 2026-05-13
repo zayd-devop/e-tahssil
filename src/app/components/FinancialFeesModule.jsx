@@ -21,7 +21,7 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
 
   // Print Modal
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
-  const [printData, setPrintData] = useState(null);
+  const [printData, setPrintData] = useState({ execution_order_number: '', execution_order_date: '', debtor_name: '', debtor_address: '',formattedMainText: '' });
 
   const fileInputRef = useRef(null);
   const API_URL = 'http://127.0.0.1:8000/api/financial-fees';
@@ -230,7 +230,7 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
   };
 
   const generateWordHTML = (dataObject, signerName, signerRole) => {
-    let formattedMainText = "المرجو تسوية الوضعية المالية في أقرب الآجال لتفادي إجراءات التنفيذ الجبري.";
+    let formattedMainText = 'المطلوب منكم الحضور شخصيا إلى مقر هذه المحكمة في أقرب الآجال لأمر يهمكم والسلام .';
     formattedMainText = formattedMainText.replace(/\n/g, '<br>');
 
     return `
@@ -240,8 +240,8 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
             <p style="font-size: 14pt; font-weight: bold; line-height: 1.5; margin-bottom: 30px;">
               المملكة المغربية<br>وزارة العدل<br>محكمة الاستئناف بطنجة<br>المحكمة الابتدائية بطنجة<br><br>وحدة التبليغ والتحصيل<br>المكتب 138 الطابق 2
             </p>
-            <p style="font-size: 16pt; font-weight: bold; margin-bottom: 5px;">رقم السجل:</p>
-            <p style="font-size: 16pt; font-weight: bold; margin-bottom: 40px;" dir="ltr">${dataObject.registry_number || '......'}</p>
+            <p style="font-size: 16pt; font-weight: bold; margin-bottom: 5px;">رقم الامر التنفيذي:</p>
+            <p style="font-size: 16pt; font-weight: bold; margin-bottom: 40px;" dir="ltr">${dataObject.execution_order_number || '......'}</p>
             
             <div style="border: 1px solid #000; padding: 10px; text-align: center; margin-top: 20px;">
               <p style="font-weight: bold; font-size: 12pt; text-decoration: underline; margin-bottom: 10px;">ملاحظة:</p>
@@ -252,22 +252,12 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
           </td>
 
           <td class="left-column">
-            <p style="font-size: 36pt; font-weight: bold; text-decoration: underline; margin-bottom: 20px; text-align: center;">إنذار بأداء ${title}</p>
+            <p style="font-size: 36pt; font-weight: bold; text-decoration: underline; margin-bottom: 20px; text-align: center;">يوجه</p>
             <p style="font-size: 16pt; font-weight: bold; margin-bottom: 40px; line-height: 1.5; text-align: center;">مـن رئيس كتابة الضبط لدى المحكمة<br>الابتدائية بطنجة</p>
             
             <div style="text-align: right; margin-bottom: 40px;">
               <p style="font-size: 14pt; font-weight: bold; margin-bottom: 15px;">إلى الســيد(ة): <span style="font-size: 14pt;">${dataObject.debtor_name}</span></p>
               <p style="font-size: 14pt; font-weight: bold; line-height: 1.6;">السـاكن بـ: <span style="font-size: 14pt;">${(dataObject.debtor_address || '.......................').replace(/\n/g, ' ')}</span></p>
-            </div>
-            
-            <p style="font-size: 14pt; font-weight: bold; text-align: right; margin-bottom: 10px;">لأداء المبالغ التالية المستحقة لفائدة الخزينة العامة:</p>
-            
-            <div style="margin-bottom: 30px; border: 2px solid #000; padding: 15px; background-color: #f9f9f9; text-align: right;">
-              <p style="font-size: 13pt; margin-bottom: 5px;">- مبلغ الرسوم القضائية: <strong>${dataObject.judicial_fees} درهم</strong></p>
-              <p style="font-size: 13pt; margin-bottom: 5px;">- حقوق المرافعة: <strong>${dataObject.pleading_rights} درهم</strong></p>
-              <p style="font-size: 16pt; font-weight: bold; margin-top: 15px; border-top: 1px dashed #000; padding-top: 10px;">
-                المجموع الإجمالي: <span style="color: #b30000;">${dataObject.total_amount} درهم</span>
-              </p>
             </div>
             
             <p style="font-size: 14pt; font-weight: bold; line-height: 1.8; text-align: center; margin-bottom: 40px;">${formattedMainText}</p>
@@ -457,7 +447,7 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
                         <input type="checkbox" className="accent-[#003366] w-4 h-4 cursor-pointer rounded mt-1" checked={selectedIds.includes(row.id)} onChange={() => toggleSelect(row.id)} />
                       </td>
                       <td className="px-5 py-5 font-mono font-bold text-lg text-[#003366] whitespace-nowrap align-top">{row.registry_number || '-'}</td>
-                      <td className="px-5 py-5 align-top text-gray-600 font-mono text-xs">{row.execution_order_date || '-'}</td>
+                      <td className="px-5 py-5 align-top text-gray-600 font-mono text-sm whitespace-nowrap">{row.execution_order_date || '-'}</td>
                       <td className="px-5 py-5 font-bold align-top whitespace-nowrap">{row.execution_order_number || '-'}</td>
                       <td className="px-5 py-5 align-top font-black text-[#003366] whitespace-nowrap">{row.debtor_name}</td>
                       <td className="px-5 py-5 align-top">
@@ -512,13 +502,12 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
           )}
         </div>
       </div>
-
       {/* --- نافذة الطباعة الفردية (Modal) --- */}
       {isPrintModalOpen && printData && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden my-8 border border-gray-100 relative animate-in fade-in zoom-in-95 duration-200">
             <div className="bg-[#003366] px-6 py-4 flex items-center justify-between text-white">
-              <h2 className="text-xl font-bold flex items-center gap-2"><Printer className="w-5 h-5 text-[#D4AF37]" /> مراجعة الإنذار</h2>
+              <h2 className="text-xl font-bold flex items-center gap-2"><Printer className="w-5 h-5 text-[#D4AF37]" /> مراجعة وتعديل الاشعار</h2>
               <button onClick={() => setIsPrintModalOpen(false)} className="p-1.5 hover:bg-white/10 rounded-lg"><X className="w-5 h-5" /></button>
             </div>
             
@@ -539,6 +528,10 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
                 <div className="space-y-1.5">
                   <label className="block text-sm font-bold text-[#003366]">تاريخ الأمر التنفيذي</label>
                   <input type="date" value={printData.execution_order_date} onChange={(e) => setPrintData({...printData, execution_order_date: e.target.value})} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl outline-none" />
+                </div>
+                <div className="space-y-1.5 md:col-span-2 bg-[#D4AF37]/10 p-4 rounded-xl border border-[#D4AF37]/30 mt-2">
+                  <label className="block text-sm font-bold text-[#003366] mb-2">موضوع الإشعار</label>
+                  <textarea value={printData.formattedMainText} onChange={(e) => setPrintData({...printData, formattedMainText: e.target.value})} rows={3} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-[#D4AF37] outline-none resize-none leading-relaxed"></textarea>
                 </div>
               </div>
             </div>
