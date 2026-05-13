@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, Plus, Pencil, Trash2, X, Loader2, Coins, MapPin, Scale, ChevronRight, ChevronLeft, Upload, FileSpreadsheet, Printer, Download, Calendar } from 'lucide-react';
+import { Search, Trash2, X, Loader2, Coins, MapPin, Scale, ChevronRight, ChevronLeft, FileSpreadsheet, Printer, Download, Calendar } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
@@ -12,9 +12,6 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
 
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingRow, setEditingRow] = useState(null);
 
   // النص الافتراضي الذي طلبته
   const defaultMainText = 'المطلوب منكم الحضور شخصيا إلى مقر هذه المحكمة في أقرب الآجال لأمر يهمكم والسلام .';
@@ -76,37 +73,7 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
     }
   };
 
-  const openModal = (row = null) => {
-    setEditingRow(row || { registry_number: '', execution_order_number: '', execution_order_date: '', debtor_name: '', debtor_address: '', judicial_fees: '', pleading_rights: '' });
-    setIsModalOpen(true);
-  };
-
-  // --- دوال الحفظ والحذف والاستيراد ---
-  const handleSave = async (e) => {
-    e.preventDefault();
-    try {
-      Swal.fire({ title: 'جاري الحفظ...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-      const method = editingRow.id ? 'PUT' : 'POST';
-      const url = editingRow.id ? `${API_URL}/${editingRow.id}` : API_URL;
-
-      const response = await fetch(url, {
-        method: method,
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
-        body: JSON.stringify(editingRow)
-      });
-
-      if (response.ok) {
-        Swal.fire({ icon: 'success', title: 'تم الحفظ بنجاح', confirmButtonColor: '#003366', timer: 1500 });
-        fetchData();
-        setIsModalOpen(false);
-      } else {
-        Swal.fire({ icon: 'error', title: 'خطأ', text: 'الرجاء التأكد من البيانات المدخلة', confirmButtonColor: '#003366' });
-      }
-    } catch (error) {
-      Swal.fire({ icon: 'error', title: 'خطأ في الاتصال', confirmButtonColor: '#003366' });
-    }
-  };
-
+  // --- دوال الحذف والاستيراد ---
   const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return;
     const result = await Swal.fire({
@@ -221,7 +188,7 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
       `;
       blob = new Blob(['\ufeff', wordDocumentHTML], { type: 'application/msword' });
     } else {
-      blob = content; // البيانات القادمة من الـ Backend كـ File
+      blob = content; 
     }
 
     const url = URL.createObjectURL(blob);
@@ -271,8 +238,8 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
             <p style="font-size: 14pt; font-weight: bold; line-height: 1.5; margin-bottom: 30px;">
               المملكة المغربية<br>وزارة العدل<br>محكمة الاستئناف بطنجة<br>المحكمة الابتدائية بطنجة<br><br>وحدة التبليغ والتحصيل
             </p>
-            <p style="font-size: 14pt; font-weight: bold; margin-bottom: 5px;">رقم السجل:</p>
-            <p style="font-size: 16pt; font-weight: bold; margin-bottom: 40px;" dir="ltr">${dataObject.registry_number || '......'}</p>
+            <p style="font-size: 14pt; font-weight: bold; margin-bottom: 5px;">رقم الامر التنفيذي:</p>
+            <p style="font-size: 16pt; font-weight: bold; margin-bottom: 40px;" dir="ltr">${dataObject.execution_order_number || '......'}</p>
           </td>
           <td class="left-column">
             <p style="font-size: 24pt; font-weight: bold; text-decoration: underline; margin-bottom: 20px; text-align: center;">${docType} بأداء ${title}</p>
@@ -284,16 +251,7 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
             </div>
             
             <p style="font-size: 14pt; font-weight: bold; text-align: right; margin-bottom: 10px;">لأداء المبالغ التالية المستحقة لفائدة الخزينة العامة:</p>
-            
-            <div style="margin-bottom: 30px; border: 2px solid #000; padding: 15px; background-color: #f9f9f9;">
-              <p style="font-size: 13pt; margin-bottom: 5px;">- مبلغ الرسوم القضائية: <strong>${dataObject.judicial_fees} درهم</strong></p>
-              <p style="font-size: 13pt; margin-bottom: 5px;">- حقوق المرافعة: <strong>${dataObject.pleading_rights} درهم</strong></p>
-              <p style="font-size: 16pt; font-weight: bold; margin-top: 15px; border-top: 1px dashed #000; padding-top: 10px;">
-                المجموع الإجمالي: <span style="color: #b30000;">${dataObject.total_amount} درهم</span>
-              </p>
-            </div>
-            
-            <p style="font-size: 14pt; text-align: center; font-weight: bold;">${formattedMainText}</p>
+            <p style="font-size: 14pt; text-align: center; font-weight: bold;">${defaultMainText}</p>
             <p style="font-size: 14pt; font-weight: bold; line-height: 1.5; text-align: center; margin-top: 30px;">
               عن رئيس مصلحة كتابة الضبط<br><br>${signerName}<br><span style="font-size: 12pt; font-weight: normal;">${signerRole}</span>
             </p>
@@ -303,7 +261,6 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
     `;
   };
 
-  // 🔥 دالة الطباعة الفردية (إشعار = HTML / إنذار = Backend)
   const handleDownloadWordSingle = async (docType) => {
     if (docType === 'إنذار') {
       try {
@@ -320,7 +277,6 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
         Swal.fire({ icon: 'error', title: 'خطأ', text: 'تأكد من رفع قالب Word في مسار Laravel', confirmButtonColor: '#003366' });
       }
     } else {
-      // إشعار
       try {
         const { signerName, signerRole } = getSignerInfo();
         const pageHtml = generateWordHTML(printData, signerName, signerRole, docType);
@@ -332,7 +288,6 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
     }
   };
 
-  // 🔥 دالة الطباعة المجمعة (إشعار = HTML / إنذار = Backend)
   const handleBulkPrint = async (docType) => {
     if (selectedIds.length === 0) return;
 
@@ -353,7 +308,6 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
         Swal.fire({ icon: 'error', title: 'خطأ أثناء التجميع', text: 'تأكد من إعداد القالب وتوفر الـ Backend', confirmButtonColor: '#003366' });
       }
     } else {
-      // إشعارات مجمعة HTML
       try {
         Swal.fire({ title: 'جاري إنشاء الملف المجمع...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         const { signerName, signerRole } = getSignerInfo();
@@ -434,10 +388,6 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}
               <span>استيراد بيان التكفلات</span>
             </button>
-            <button onClick={() => openModal()} className="flex items-center gap-2 px-5 py-3.5 bg-[#003366] text-white rounded-xl font-bold transition-all hover:bg-[#002244] shadow-lg hover:shadow-xl active:scale-95">
-              <Plus className="w-5 h-5 text-[#D4AF37]" />
-              <span>إضافة سجل جديد</span>
-            </button>
           </div>
         </div>
 
@@ -506,9 +456,6 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
                       <td className="px-5 py-5 align-middle font-black text-red-600 text-lg whitespace-nowrap">{row.total_amount} د.م</td>
                       <td className="px-5 py-5 align-middle text-center">
                         <div className="flex items-center justify-center gap-2">
-                          <button onClick={() => openModal(row)} className="p-2 text-[#D4AF37] hover:bg-[#D4AF37]/10 rounded-lg transition-colors border border-transparent hover:border-[#D4AF37]/20" title="تعديل">
-                            <Pencil className="w-4 h-4" />
-                          </button>
                           <button onClick={() => handlePrintClick(row)} className="p-2 text-[#003366] hover:bg-[#003366]/10 rounded-lg transition-colors border border-transparent hover:border-[#003366]/20" title="تجهيز الطباعة">
                             <Printer className="w-4 h-4" />
                           </button>
@@ -591,73 +538,12 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
             <div className="px-6 py-4 bg-gray-50 border-t flex justify-end gap-3 rounded-b-2xl">
               <button onClick={() => setIsPrintModalOpen(false)} className="px-5 py-2.5 text-gray-600 bg-white border border-gray-300 rounded-xl font-bold hover:bg-gray-100">إلغاء</button>
               <button onClick={() => handleDownloadWordSingle('إشعار')} className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-md">
-                <Download className="w-4 h-4" /> تنزيل إشعار
+                <Download className="w-4 h-4" /> طباعة يوجه
               </button>
               <button onClick={() => handleDownloadWordSingle('إنذار')} className="flex items-center gap-2 px-6 py-2.5 bg-[#003366] text-white rounded-xl font-bold hover:bg-[#002244] shadow-md">
-                <Download className="w-4 h-4" /> تنزيل إنذار
+                <Download className="w-4 h-4" /> طباعة إنذار
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* --- نافذة الإضافة / التعديل (EDIT MODAL) --- */}
-      {isModalOpen && editingRow && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden my-8 border border-gray-100 relative animate-in fade-in zoom-in-95 duration-200">
-            <div className="bg-[#003366] px-6 py-4 flex items-center justify-between text-white">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <Pencil className="w-5 h-5 text-[#D4AF37]" /> {editingRow?.id ? 'تعديل بيانات السجل' : 'إضافة سجل جديد'}
-              </h2>
-              <button onClick={() => setIsModalOpen(false)} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><X className="w-5 h-5" /></button>
-            </div>
-            
-            <form onSubmit={handleSave} className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="space-y-1.5 md:col-span-2">
-                  <label className="block text-sm font-bold text-[#003366]">{tableHeaderTitle}</label>
-                  <input type="text" value={editingRow.registry_number} onChange={(e) => setEditingRow({...editingRow, registry_number: e.target.value})} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-[#D4AF37] outline-none font-mono font-bold" dir="ltr" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-bold text-[#003366]">رقم الأمر التنفيذي</label>
-                  <input type="text" value={editingRow.execution_order_number} onChange={(e) => setEditingRow({...editingRow, execution_order_number: e.target.value})} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-[#D4AF37] outline-none" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-bold text-[#003366]">تاريخ الأمر التنفيذي</label>
-                  <input type="date" value={editingRow.execution_order_date} onChange={(e) => setEditingRow({...editingRow, execution_order_date: e.target.value})} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-[#D4AF37] outline-none" />
-                </div>
-                <div className="space-y-1.5 md:col-span-2 bg-[#003366]/5 p-5 rounded-2xl border border-[#003366]/10">
-                   <div className="space-y-4">
-                     <div className="space-y-1.5">
-                       <label className="block text-sm font-bold text-gray-700">الإسم الكامل للمدين <span className="text-red-500">*</span></label>
-                       <input type="text" value={editingRow.debtor_name} onChange={(e) => setEditingRow({...editingRow, debtor_name: e.target.value})} required className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-[#D4AF37] outline-none font-bold" />
-                     </div>
-                     <div className="space-y-1.5">
-                       <label className="block text-sm font-bold text-gray-700">عنوان المدين</label>
-                       <textarea value={editingRow.debtor_address} onChange={(e) => setEditingRow({...editingRow, debtor_address: e.target.value})} rows={3} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-[#D4AF37] outline-none resize-none leading-relaxed"></textarea>
-                     </div>
-                   </div>
-                </div>
-                <div className="space-y-1.5 bg-emerald-50 p-4 rounded-xl border border-emerald-100">
-                  <label className="block text-sm font-bold text-emerald-800">مبلغ الرسوم القضائية</label>
-                  <div className="relative">
-                    <input type="number" step="0.01" min="0" value={editingRow.judicial_fees} onChange={(e) => setEditingRow({...editingRow, judicial_fees: e.target.value})} className="w-full px-4 py-2.5 border border-emerald-200 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-left" dir="ltr" />
-                    <span className="absolute top-1/2 -translate-y-1/2 right-3 text-xs font-bold text-emerald-600">MAD</span>
-                  </div>
-                </div>
-                <div className="space-y-1.5 bg-blue-50 p-4 rounded-xl border border-blue-100">
-                  <label className="block text-sm font-bold text-blue-800">حقوق المرافعة</label>
-                  <div className="relative">
-                    <input type="number" step="0.01" min="0" value={editingRow.pleading_rights} onChange={(e) => setEditingRow({...editingRow, pleading_rights: e.target.value})} className="w-full px-4 py-2.5 border border-blue-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-mono text-left" dir="ltr" />
-                    <span className="absolute top-1/2 -translate-y-1/2 right-3 text-xs font-bold text-blue-600">MAD</span>
-                  </div>
-                </div>
-              </div>
-              <div className="px-6 py-4 bg-gray-50 border-t flex justify-end gap-3 mt-6 -mx-6 -mb-6 rounded-b-2xl">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-gray-600 bg-white border border-gray-300 rounded-xl font-bold hover:bg-gray-100">إلغاء</button>
-                <button type="submit" className="px-6 py-2.5 bg-[#D4AF37] text-[#003366] rounded-xl font-bold shadow-md hover:bg-[#C5A028]">حفظ السجل</button>
-              </div>
-            </form>
           </div>
         </div>
       )}
