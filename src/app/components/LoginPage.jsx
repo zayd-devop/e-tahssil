@@ -8,7 +8,7 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
   const [formData, setFormData] = useState({ identifier: '', password: '', rememberMe: false });
 
   // رابط الـ API (تأكد من أنه يطابق مسار مشروع Laravel)
-  const API_URL = 'https://e-tahssil-api-production.up.railway.app/api' ||'http://127.0.0.1:8000/api';
+  const API_URL = import.meta.env.VITE_API_URL ||'http://127.0.0.1:8000/api';
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
