@@ -9,6 +9,7 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
 
   // رابط الـ API (تأكد من أنه يطابق مسار مشروع Laravel)
   const API_URL = import.meta.env.VITE_API_URL ||'http://127.0.0.1:8000/api';
+  axios.defaults.withCredentials = true;
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
