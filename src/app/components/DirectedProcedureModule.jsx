@@ -431,7 +431,7 @@ export function DirectedProcedureModule({ onLogout }) {
   // ==========================================
   // --- 2. BULK PRINT ---
   // ==========================================
-  const handleBulkPrint = (docType) => {
+  const handleBulkPrint = async (docType) => {
     if (selectedIds.length === 0) return;
 
     if (docType === 'إنذار') {
@@ -498,7 +498,20 @@ export function DirectedProcedureModule({ onLogout }) {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      
+      // 🔥 LA SOLUTION EST ICI : Appel API pour chaque ID sélectionné
+      try {
+        await Promise.all(selectedIds.map(id => 
+          fetch(`${API_URL}/print/${id}`, {
+            method: 'POST', // ou GET
+            headers: {
+              'Authorization': `Bearer ${getToken()}`,
+              'Accept': 'application/json'
+            }
+          })
+        ));
+      } catch (apiError) {
+        console.error("Erreur lors de l'enregistrement de l'impression groupée :", apiError);
+      }
       // 🔥 Archivage automatique après impression groupée
       if (!isArchiveView) {
         setArchivedIds(prev => [...new Set([...prev, ...selectedIds])]);
