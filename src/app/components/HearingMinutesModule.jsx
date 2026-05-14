@@ -10,7 +10,8 @@ import {
   ChevronRight,
   ChevronLeft,
   Calendar,
-  FileText 
+  FileText,
+  UserPen // Ajout d'une petite icône pour le greffier
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
@@ -18,15 +19,17 @@ export default function HearingMinutesModule() {
   const [tableData, setTableData] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState(''); 
-  const [isLoading, setIsLoading] = useState(true);
   
+  // NOUVEAU : State pour le nom du greffier
+  const [clerkName, setClerkName] = useState(''); 
+  
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState([]);
   
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20; // 👈 Modifié à 20 éléments par page
+  const itemsPerPage = 20;
 
   const fileInputRef = useRef(null);
-  // Plus besoin de generalRegisterRef car on a fusionné l'importation !
 
   useEffect(() => {
     fetchData();
@@ -112,8 +115,16 @@ export default function HearingMinutesModule() {
   };
 
   const handlePrintSingle = async (id, fileNumber) => {
+    // Vérification : Exiger le nom du greffier avant d'imprimer
+    if (!clerkName.trim()) {
+        Swal.fire({ icon: 'warning', title: 'تنبيه', text: 'المرجو إدخال اسم كاتب الضبط أولاً فوق الجدول', confirmButtonColor: '#003366' });
+        return;
+    }
+
     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-    const url = `http://127.0.0.1:8000/api/hearing-minutes/print/${id}`;
+    
+    // On passe le nom du greffier dans l'URL pour une requête GET
+    const url = `http://127.0.0.1:8000/api/hearing-minutes/print/${id}?clerk_name=${encodeURIComponent(clerkName)}`;
 
     try {
         Swal.fire({ 
@@ -145,6 +156,12 @@ export default function HearingMinutesModule() {
 
   const handleMergedPrint = async () => {
     if (selectedIds.length === 0) return;
+
+    // Vérification : Exiger le nom du greffier avant l'impression groupée
+    if (!clerkName.trim()) {
+        Swal.fire({ icon: 'warning', title: 'تنبيه', text: 'المرجو إدخال اسم كاتب الضبط أولاً فوق الجدول', confirmButtonColor: '#003366' });
+        return;
+    }
     
     try {
       Swal.fire({ 
@@ -160,7 +177,11 @@ export default function HearingMinutesModule() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ ids: selectedIds })
+        // On envoie le nom du greffier dans le Body de la requête POST
+        body: JSON.stringify({ 
+            ids: selectedIds,
+            clerk_name: clerkName 
+        })
       });
 
       if (!response.ok) throw new Error();
@@ -200,7 +221,6 @@ export default function HearingMinutesModule() {
   const goToNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
   const goToPrevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
 
-  // --- NOUVEAU : Pagination Intelligente (Max 5 boutons) ---
   const getVisiblePages = () => {
     const maxVisible = 5;
     let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
@@ -249,14 +269,17 @@ export default function HearingMinutesModule() {
           </div>
         </div>
 
-        {/* Input caché UNIQUE */}
         <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} />
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
           
+          {/* BARRE D'ACTIONS ET FILTRES */}
           <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-white flex-wrap gap-4">
-            <div className="flex items-center gap-3 flex-1 min-w-[300px]">
-              <div className="relative flex-1">
+            
+            <div className="flex items-center gap-3 flex-1 flex-wrap">
+              
+              {/* 1. Recherche */}
+              <div className="relative flex-1 min-w-[200px]">
                 <input 
                   type="text" 
                   value={searchQuery}
@@ -267,6 +290,7 @@ export default function HearingMinutesModule() {
                 <Search className="w-4 h-4 text-gray-400 absolute right-4 top-1/2 -translate-y-1/2" />
               </div>
 
+              {/* 2. Filtre Date */}
               <div className="relative">
                 <input 
                   type="date" 
@@ -276,6 +300,19 @@ export default function HearingMinutesModule() {
                 />
                 <Calendar className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
+
+              {/* 3. NOUVEAU : Input pour le nom du greffier */}
+              <div className="relative flex-1 min-w-[200px]">
+                <input 
+                  type="text" 
+                  value={clerkName}
+                  onChange={(e) => setClerkName(e.target.value)}
+                  placeholder="أدخل اسم كاتب الضبط هنا..." 
+                  className="w-full pr-11 py-2.5 bg-amber-50 border border-amber-200 text-[#003366] placeholder-amber-700/50 rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#D4AF37] outline-none"
+                />
+                <UserPen className="w-4 h-4 text-amber-600 absolute right-4 top-1/2 -translate-y-1/2" />
+              </div>
+
             </div>
             
             <div className="flex items-center gap-3">
@@ -289,7 +326,6 @@ export default function HearingMinutesModule() {
                 </button>
               )}
 
-              {/* Le bouton UNIQUE d'importation */}
               <button 
                 onClick={() => fileInputRef.current.click()} 
                 className="flex items-center gap-2 px-5 py-2.5 bg-[#003366] text-white border border-[#003366] rounded-xl font-bold hover:bg-[#002244] transition-all"
@@ -400,7 +436,6 @@ export default function HearingMinutesModule() {
                 عرض {indexOfFirstItem + 1} إلى {Math.min(indexOfLastItem, filteredData.length)} من أصل {filteredData.length} سجل
               </span>
               
-              {/* 👇 Pagination Intelligente 👇 */}
               <div className="flex items-center gap-2" dir="ltr">
                 <button 
                   onClick={goToPrevPage} 
@@ -434,7 +469,6 @@ export default function HearingMinutesModule() {
                   <ChevronRight className="w-5 h-5 text-[#003366]" />
                 </button>
               </div>
-              {/* 👆 ---------------------- 👆 */}
             </div>
           )}
         </div>
