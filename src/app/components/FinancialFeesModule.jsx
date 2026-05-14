@@ -226,33 +226,43 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
     });
     setIsPrintModalOpen(true);
   };
+   
 
   const generateWordHTML = (dataObject, signerName, signerRole, docType) => {
     let formattedMainText = dataObject.formattedMainText || defaultMainText;
     formattedMainText = formattedMainText.replace(/\n/g, '<br>');
 
-    return `
-      <table class="main-table" dir="rtl">
+    return `<table class="main-table" dir="rtl">
         <tr>
           <td class="right-column">
             <p style="font-size: 14pt; font-weight: bold; line-height: 1.5; margin-bottom: 30px;">
-              المملكة المغربية<br>وزارة العدل<br>محكمة الاستئناف بطنجة<br>المحكمة الابتدائية بطنجة<br><br>وحدة التبليغ والتحصيل
+              المملكة المغربية<br>وزارة العدل<br>محكمة الاستئناف بطنجة<br>المحكمة الابتدائية بطنجة<br><br>وحدة التبليغ والتحصيل<br>المكتب 138 الطابق 2
             </p>
-            <p style="font-size: 14pt; font-weight: bold; margin-bottom: 5px;">رقم الامر التنفيذي:</p>
+            <p style="font-size: 16pt; font-weight: bold; margin-bottom: 5px;">رقم الامر التنفيذي:</p>
             <p style="font-size: 16pt; font-weight: bold; margin-bottom: 40px;" dir="ltr">${dataObject.execution_order_number || '......'}</p>
-          </td>
-          <td class="left-column">
-            <p style="font-size: 24pt; font-weight: bold; text-decoration: underline; margin-bottom: 20px; text-align: center;">${docType} بأداء ${title}</p>
             
-            <div style="text-align: right; margin-bottom: 30px; font-size: 14pt; line-height: 1.8;">
-              <p><strong>بناء على الأمر التنفيذي رقم:</strong> ${dataObject.execution_order_number || '......'} <strong>بتاريخ:</strong> ${dataObject.execution_order_date || '......'}</p>
-              <p><strong>نوجه هذا ال${docType} إلى السيد(ة):</strong> ${dataObject.debtor_name}</p>
-              <p><strong>الساكن بـ:</strong> ${dataObject.debtor_address || '.......................'}</p>
+            <div style="border: 1px solid #000; padding: 10px; text-align: center; margin-top: 20px;">
+              <p style="font-weight: bold; font-size: 12pt; text-decoration: underline; margin-bottom: 10px;">ملاحظة:</p>
+              <p style="font-size: 9pt; line-height: 1.5; text-align: justify; direction: rtl;">
+                طبقا للمقتضى الجديد المنصوص عليه في المادة 1-634 من قانون المسطرة الجنائية: يستفيد المدين من <span style="background-color: #d9d9d9; font-weight: bold;">تخفيض الغرامة إلى الثلثين</span> شريطة أداء ما بذمته داخل أجل <span style="background-color: #d9d9d9; font-weight: bold;">30 يوما</span> يحتسب إبتداءا من تاريخ النطق بالأحكام الحضورية، أو من تاريخ تبليغ المقررات القضائية الغيابية أو بمثابة حضورية. كما تجدر الإشارة إلى أن هذا التخفيض لا يشمل باقي أنواع الديون العمومية.
+              </p>
+            </div>
+          </td>
+
+          <td class="left-column">
+            <p style="font-size: 36pt; font-weight: bold; text-decoration: underline; margin-bottom: 20px; text-align: center;">يوجه</p>
+            <p style="font-size: 16pt; font-weight: bold; margin-bottom: 40px; line-height: 1.5; text-align: center;">مـن رئيس كتابة الضبط لدى المحكمة<br>الابتدائية بطنجة</p>
+            
+            <div style="text-align: right; margin-bottom: 40px;">
+              <p style="font-size: 14pt; font-weight: bold; margin-bottom: 15px;">إلى الســيد(ة): <span style="font-size: 14pt;">${dataObject.debtor_name}</span></p>
+              <p style="font-size: 14pt; font-weight: bold; line-height: 1.6;">السـاكن بـ: <span style="font-size: 14pt;">${(dataObject.debtor_address || '.......................').replace(/\n/g, ' ')}</span></p>
             </div>
             
-            <p style="font-size: 14pt; font-weight: bold; text-align: right; margin-bottom: 10px;">لأداء المبالغ التالية المستحقة لفائدة الخزينة العامة:</p>
-            <p style="font-size: 14pt; text-align: center; font-weight: bold;">${defaultMainText}</p>
-            <p style="font-size: 14pt; font-weight: bold; line-height: 1.5; text-align: center; margin-top: 30px;">
+            <p style="font-size: 14pt; font-weight: bold; line-height: 1.8; text-align: center; margin-bottom: 40px;">${formattedMainText}</p>
+            
+            <p style="font-size: 14pt; font-weight: bold; margin-bottom: 20px; text-align: center;">حرر بطنجة في: ${new Date().toISOString().split('T')[0]}</p>
+            
+            <p style="font-size: 14pt; font-weight: bold; line-height: 1.5; text-align: center;">
               عن رئيس مصلحة كتابة الضبط<br><br>${signerName}<br><span style="font-size: 12pt; font-weight: normal;">${signerRole}</span>
             </p>
           </td>

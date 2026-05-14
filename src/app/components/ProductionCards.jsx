@@ -43,8 +43,6 @@ export function ProductionCards() {
     card1Title: 'معلومات عامة',
     dateLabel: 'تاريخ الإنجاز', // تم تعديل التسمية قليلاً لتناسب أي تاريخ
     sectionLabel: 'الشعبة',
-    registresLabel: 'مسك السجلات',
-    registres: ['سجل العقوبات البدنية 512', 'سجل التنفيذات 604', 'سجل الانابات الواردة و الصادرة'],
 
     card2Title: 'العمل الإداري والتبليغ (الإجراءات المنجزة)',
     actionCategoryLabel: 'فئة الإجراءات',
@@ -57,7 +55,7 @@ export function ProductionCards() {
     nombrePVsLabel: 'عدد المحاضر',
     pvPositifLabel: 'إيجابي',
     pvNegatifLabel: 'سلبي',
-    contrainteLabel: ' عدد الإكراهات البدنية',
+    contrainteLabel: ' عدد طلبات الاكراه البدني ',
 
     card4Title: 'تتمة التنفيذات والتحصيل',
     dossiersAnnulationLabel: 'عدد الإلغاءات',
@@ -231,10 +229,13 @@ export function ProductionCards() {
               <Info className="w-5 h-5 text-[#003366]" />
               <h3 className="text-lg font-bold text-gray-800">{t.card1Title}</h3>
             </div>
+            
+            {/* 🔥 MODIFICATION ICI : md:grid-cols-3 au lieu de md:grid-cols-2 */}
             <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-5">
-              <div>
+              
+              {/* 🔥 La date prend 1 seule colonne */}
+              <div className="md:col-span-1">
                 <label className={labelClassName}>{t.dateLabel}</label>
-                {/* تم تعديل حقل التاريخ هنا ليصبح قابلاً للاختيار */}
                 <input 
                   type="date" 
                   name="todayDate"
@@ -244,19 +245,15 @@ export function ProductionCards() {
                   required
                 />
               </div>
-              <div>
+
+              {/* 🔥 La section (شعبة) prend 2 colonnes pour avoir plus d'espace */}
+              <div className="md:col-span-2">
                 <label className={labelClassName}>{t.sectionLabel}</label>
                 <select name="section" value={formData.section} onChange={handleChange} className={`${inputClassName} bg-white cursor-pointer`} required>
                   {hierarchyData.map((sec) => (<option key={sec.id} value={sec.name}>{sec.name}</option>))}
                 </select>
               </div>
-              <div>
-                <label className={labelClassName}>{t.registresLabel}</label>
-                <select name="registre" value={formData.registre} onChange={handleChange} className={`${inputClassName} bg-white cursor-pointer`}>
-                  <option value="">اختر السجل...</option>
-                  {t.registres.map((reg, idx) => (<option key={idx} value={reg}>{reg}</option>))}
-                </select>
-              </div>
+
             </div>
           </div>
 

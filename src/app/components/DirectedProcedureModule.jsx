@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Upload, FileSpreadsheet, Pencil, Printer, FileText, CheckCircle2, Search, X, Plus, MapPin, Filter, Download, Loader2, LogOut, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Upload, FileSpreadsheet, Pencil, Printer, FileText, CheckCircle2, Search, X, Plus, MapPin, Filter, Download, Loader2, LogOut, ChevronRight, ChevronLeft, Archive, RotateCcw, Trash2 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 export function DirectedProcedureModule({ onLogout }) {
@@ -12,6 +12,18 @@ export function DirectedProcedureModule({ onLogout }) {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 50;
 
+  // --- نظام الأرشيف (Archive System) ---
+  const [isArchiveView, setIsArchiveView] = useState(false);
+  const [archivedIds, setArchivedIds] = useState(() => {
+    const saved = localStorage.getItem('archivedProcedureIds');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // حفظ الأرشيف في المتصفح حتى لا يضيع عند التحديث
+  useEffect(() => {
+    localStorage.setItem('archivedProcedureIds', JSON.stringify(archivedIds));
+  }, [archivedIds]);
+
   // --- حالة التحديد للطباعة المجمعة ---
   const [selectedIds, setSelectedIds] = useState([]);
 
@@ -19,15 +31,16 @@ export function DirectedProcedureModule({ onLogout }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingRow, setEditingRow] = useState(null);
 
-  // Print Modal State (Print par Ligne)
+  // Print Modal State
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const defaultMainText = 'المطلوب منكم الحضور شخصيا إلى مقر هذه المحكمة في أقرب الآجال لأمر يهمكم والسلام .';
   const [printData, setPrintData] = useState({
     documentType: 'يوجه',
     suspectName: '',
     address: '',
     fileNumber: '',
     issueDate: '',
-    mainText: '',
+    mainText: defaultMainText,
     availableParties: [],
     availableAddresses: [],
     availableRoles: [],
@@ -46,7 +59,7 @@ export function DirectedProcedureModule({ onLogout }) {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedRole, data]);
+  }, [searchQuery, selectedRole, data, isArchiveView]);
 
   const fetchData = async () => {
     try {
@@ -67,15 +80,17 @@ export function DirectedProcedureModule({ onLogout }) {
       setData(result);
     } catch (error) {
       console.error('Erreur de chargement:', error);
-      Swal.fire({
-        icon: 'error',
-        title: 'خطأ في الاتصال',
-        text: 'تعذر تحميل البيانات من الخادم',
-        confirmButtonColor: '#003366'
-      });
+      Swal.fire({ icon: 'error', title: 'خطأ في الاتصال', text: 'تعذر تحميل البيانات من الخادم', confirmButtonColor: '#003366' });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // --- دوال نظام الأرشيف ---
+  const handleUnarchiveSelected = () => {
+    setArchivedIds(prev => prev.filter(id => !selectedIds.includes(id)));
+    setSelectedIds([]);
+    Swal.fire({ icon: 'success', title: 'تم الاسترجاع', text: 'عادت الملفات إلى الجدول الرئيسي', confirmButtonColor: '#003366', timer: 1500 });
   };
 
   // --- دوال نافذة التعديل (EDIT) ---
@@ -121,42 +136,23 @@ export function DirectedProcedureModule({ onLogout }) {
 
   const removeEditParty = () => {
     if (editingRow.combinedParties.length <= 1) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'تنبيه',
-        text: 'لا يمكن حذف جميع الأطراف، يجب أن يحتوي الملف على طرف واحد على الأقل.',
-        confirmButtonColor: '#D4AF37'
-      });
+      Swal.fire({ icon: 'warning', title: 'تنبيه', text: 'لا يمكن حذف جميع الأطراف، يجب أن يحتوي الملف على طرف واحد على الأقل.', confirmButtonColor: '#D4AF37' });
       return;
     }
     const newParties = editingRow.combinedParties.filter((_, i) => i !== editingRow.currentEditIndex);
-    setEditingRow({ 
-      ...editingRow, 
-      combinedParties: newParties,
-      currentEditIndex: 0 
-    });
+    setEditingRow({ ...editingRow, combinedParties: newParties, currentEditIndex: 0 });
   };
 
   const handleSave = async () => {
     try {
-      Swal.fire({
-        title: 'جاري الحفظ...',
-        text: 'الرجاء الانتظار بينما يتم حفظ التعديلات',
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading();
-        }
-      });
+      Swal.fire({ title: 'جاري الحفظ...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
       const partiesToSave = editingRow.combinedParties.map(p => p.name).filter(n => n.trim() !== '');
       
       const extractUnique = (field, separator) => {
         const allItems = editingRow.combinedParties
           .map(p => p[field] || '')
-          .join(separator)
-          .split(separator)
-          .map(item => item.trim())
-          .filter(item => item !== '');
+          .join(separator).split(separator).map(item => item.trim()).filter(item => item !== '');
         return Array.from(new Set(allItems)).join(separator);
       };
 
@@ -177,41 +173,20 @@ export function DirectedProcedureModule({ onLogout }) {
 
       const response = await fetch(`${API_URL}/${editingRow.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${getToken()}`
-        },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` },
         body: JSON.stringify(payload)
       });
 
       if (response.ok) {
         setData(data.map(item => item.id === editingRow.id ? payload : item));
         handleCloseModal();
-        Swal.fire({
-          icon: 'success',
-          title: 'تم الحفظ!',
-          text: 'تم حفظ التعديلات بنجاح',
-          confirmButtonColor: '#003366',
-          timer: 2000
-        });
+        Swal.fire({ icon: 'success', title: 'تم الحفظ!', confirmButtonColor: '#003366', timer: 2000 });
       } else {
         const errorData = await response.json();
-        Swal.fire({
-          icon: 'error',
-          title: 'خطأ!',
-          text: `حدث خطأ أثناء التعديل: ${errorData.message}`,
-          confirmButtonColor: '#003366'
-        });
+        Swal.fire({ icon: 'error', title: 'خطأ!', text: `حدث خطأ أثناء التعديل: ${errorData.message}`, confirmButtonColor: '#003366' });
       }
     } catch (error) {
-      console.error('خطأ:', error);
-      Swal.fire({
-        icon: 'error',
-        title: 'خطأ في الاتصال!',
-        text: 'تعذر الاتصال بالخادم',
-        confirmButtonColor: '#003366'
-      });
+      Swal.fire({ icon: 'error', title: 'خطأ في الاتصال!', confirmButtonColor: '#003366' });
     }
   };
 
@@ -220,18 +195,45 @@ export function DirectedProcedureModule({ onLogout }) {
     setEditingRow(null);
   };
 
+  // --- الحذف من قاعدة البيانات ---
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    const result = await Swal.fire({
+      title: 'هل أنت متأكد؟',
+      text: `سيتم حذف ${selectedIds.length} سجلات نهائياً من قاعدة البيانات!`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#003366',
+      confirmButtonText: 'نعم، حذف نهائي',
+      cancelButtonText: 'إلغاء'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        Swal.fire({ title: 'جاري الحذف...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        const response = await fetch(`${API_URL}/bulk-delete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
+          body: JSON.stringify({ ids: selectedIds })
+        });
+        if (response.ok) {
+          fetchData();
+          setArchivedIds(prev => prev.filter(id => !selectedIds.includes(id))); // إزالة من الأرشيف أيضاً
+          setSelectedIds([]);
+          Swal.fire({ icon: 'success', title: 'تم الحذف', confirmButtonColor: '#003366', timer: 1500 });
+        }
+      } catch (error) {
+        Swal.fire({ icon: 'error', title: 'خطأ في الاتصال', confirmButtonColor: '#003366' });
+      }
+    }
+  };
+
   const handleExcelUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
-    Swal.fire({
-      title: 'جاري الاستيراد...',
-      text: 'يتم الآن قراءة ومعالجة ملف Excel، قد يستغرق الأمر بضع ثوانٍ',
-      allowOutsideClick: false,
-      didOpen: () => {
-        Swal.showLoading();
-      }
-    });
+    Swal.fire({ title: 'جاري الاستيراد...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     const formData = new FormData();
     formData.append('file', file);
@@ -240,37 +242,19 @@ export function DirectedProcedureModule({ onLogout }) {
       const response = await fetch(`${API_URL}/import`, {
         method: 'POST',
         body: formData,
-        headers: { 
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${getToken()}`
-        }
+        headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` }
       });
       const responseData = await response.json();
 
       if (response.ok) {
-        Swal.fire({
-          icon: 'success',
-          title: 'تم الاستيراد بنجاح!',
-          text: `تمت إضافة الملفات إلى قاعدة البيانات`,
-          confirmButtonColor: '#003366'
-        });
+        Swal.fire({ icon: 'success', title: 'تم الاستيراد بنجاح!', confirmButtonColor: '#003366' });
         fetchData(); 
         setSelectedIds([]);
       } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'خطأ في الاستيراد',
-          text: responseData.details || responseData.error || 'تأكد من هيكل ملف الإكسل',
-          confirmButtonColor: '#003366'
-        });
+        Swal.fire({ icon: 'error', title: 'خطأ في الاستيراد', text: responseData.details || responseData.error || 'تأكد من هيكل ملف الإكسل', confirmButtonColor: '#003366' });
       }
     } catch (error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'خطأ في الاتصال',
-        text: 'تعذر الاتصال بالخادم أثناء الاستيراد.',
-        confirmButtonColor: '#003366'
-      });
+      Swal.fire({ icon: 'error', title: 'خطأ في الاتصال', confirmButtonColor: '#003366' });
     } finally {
       event.target.value = null;
     }
@@ -335,23 +319,19 @@ export function DirectedProcedureModule({ onLogout }) {
   };
 
   // ==========================================
-  // --- 1. PRINT PAR LIGNE (Fenêtre Modale) ---
+  // --- 1. PRINT PAR LIGNE ---
   // ==========================================
   const handlePrintClick = (row) => {
     const rolesArray = row.role ? row.role.split(' / ') : [];
     const addressesArray = row.address ? row.address.split('\n') : [];
     const partiesArray = row.parties || [];
 
-    // Recherche de TOUS les accusés
     let suspectIndices = [];
-    rolesArray.forEach((r, idx) => {
-        if (r.includes('المتهم')) suspectIndices.push(idx);
-    });
+    rolesArray.forEach((r, idx) => { if (r.includes('المتهم')) suspectIndices.push(idx); });
 
     let defaultIndex = 0;
     let isMultiple = false;
 
-    // Si plusieurs accusés, on prépare l'option "Tous les accusés de ce dossier"
     if (suspectIndices.length > 1) {
         defaultIndex = 'ALL';
         isMultiple = true;
@@ -363,6 +343,7 @@ export function DirectedProcedureModule({ onLogout }) {
     const issueDate = today.toLocaleDateString('ar-MA', { year: 'numeric', month: 'long', day: 'numeric' });
 
     setPrintData({
+      id: row.id, // Garder l'ID pour l'archivage
       documentType: 'يوجه',
       suspectName: defaultIndex === 'ALL' ? 'سيتم إعداد إشعارات لجميع المتهمين' : (partiesArray[defaultIndex] || partiesArray[0] || ''),
       address: defaultIndex === 'ALL' ? 'عناوين متعددة' : (addressesArray[defaultIndex] || row.address || ''),
@@ -382,20 +363,10 @@ export function DirectedProcedureModule({ onLogout }) {
   const handlePartySelectionChange = (e) => {
     const val = e.target.value;
     if (val === 'ALL') {
-        setPrintData({
-            ...printData,
-            selectedIndex: 'ALL',
-            suspectName: 'سيتم إعداد إشعارات لجميع المتهمين',
-            address: 'عناوين متعددة'
-        });
+        setPrintData({ ...printData, selectedIndex: 'ALL', suspectName: 'سيتم إعداد إشعارات لجميع المتهمين', address: 'عناوين متعددة' });
     } else {
         const index = parseInt(val, 10);
-        setPrintData({
-            ...printData,
-            selectedIndex: index,
-            suspectName: printData.availableParties[index] || '',
-            address: printData.availableAddresses[index] || printData.availableAddresses[0] || printData.address
-        });
+        setPrintData({ ...printData, selectedIndex: index, suspectName: printData.availableParties[index] || '', address: printData.availableAddresses[index] || printData.availableAddresses[0] || printData.address });
     }
   };
 
@@ -404,26 +375,18 @@ export function DirectedProcedureModule({ onLogout }) {
       const { signerName, signerRole } = getSignerInfo();
       let pages = [];
 
-      // Si l'utilisateur choisit d'imprimer TOUS les accusés de CETTE ligne
       if (printData.selectedIndex === 'ALL') {
           printData.availableRoles.forEach((role, idx) => {
               if (role.includes('المتهم')) {
-                  const rowData = {
-                      ...printData,
-                      suspectName: printData.availableParties[idx] || printData.availableParties[0] || '',
-                      address: printData.availableAddresses[idx] || printData.address || ''
-                  };
+                  const rowData = { ...printData, suspectName: printData.availableParties[idx] || printData.availableParties[0] || '', address: printData.availableAddresses[idx] || printData.address || '' };
                   pages.push(generateWordHTML(rowData, signerName, signerRole));
               }
           });
       } else {
-          // Un seul accusé
           pages.push(generateWordHTML(printData, signerName, signerRole));
       }
 
-      // Concaténer avec des sauts de page
       const allPagesHtml = pages.join("<br clear='all' style='mso-special-character:line-break;page-break-before:always' />");
-
       const wordDocumentHTML = `
         <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
         <head>
@@ -437,9 +400,7 @@ export function DirectedProcedureModule({ onLogout }) {
             p { margin: 0; padding: 0; }
           </style>
         </head>
-        <body>
-          ${allPagesHtml}
-        </body>
+        <body>${allPagesHtml}</body>
         </html>
       `;
 
@@ -455,37 +416,36 @@ export function DirectedProcedureModule({ onLogout }) {
       URL.revokeObjectURL(url);
       setIsPrintModalOpen(false);
       
-      Swal.fire({
-        icon: 'success',
-        title: 'تم التنزيل!',
-        confirmButtonColor: '#003366',
-        timer: 2000
-      });
+      // 🔥 Archivage automatique après impression
+      if (!isArchiveView) {
+        setArchivedIds(prev => [...new Set([...prev, printData.id])]);
+      }
+
+      Swal.fire({ icon: 'success', title: 'تم التنزيل!', text: 'تم إنشاء الإشعار ونقله للأرشيف بنجاح', confirmButtonColor: '#003366', timer: 2500 });
       
     } catch (error) {
-      console.error('Erreur:', error);
       Swal.fire({ icon: 'error', title: 'خطأ', text: 'حدث خطأ أثناء إنشاء ملف Word', confirmButtonColor: '#003366' });
     }
   };
 
   // ==========================================
-  // --- 2. BULK PRINT (Bouton pour les Checkboxes) ---
+  // --- 2. BULK PRINT ---
   // ==========================================
-  const handleBulkPrint = () => {
+  const handleBulkPrint = (docType) => {
     if (selectedIds.length === 0) return;
 
-    Swal.fire({
-      title: 'جاري إنشاء الملف المجمع...',
-      text: 'الرجاء الانتظار قليلاً',
-      allowOutsideClick: false,
-      didOpen: () => Swal.showLoading()
-    });
+    if (docType === 'إنذار') {
+        // Logique Backend pour les inndar (Si configurée)
+        Swal.fire({ icon: 'info', title: 'ميزة قيد التطوير', text: 'يرجى إعداد خادم الإنذارات المجمعة', confirmButtonColor: '#003366' });
+        return;
+    }
+
+    Swal.fire({ title: 'جاري إنشاء الملف المجمع...', text: 'الرجاء الانتظار قليلاً', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     try {
       const { signerName, signerRole } = getSignerInfo();
       const today = new Date();
       const issueDate = today.toLocaleDateString('ar-MA', { year: 'numeric', month: 'long', day: 'numeric' });
-      const defaultMainText = 'المطلوب منكم الحضور شخصيا إلى مقر هذه المحكمة في أقرب الآجال لأمر يهمكم والسلام .';
 
       const selectedRows = data.filter(row => selectedIds.includes(row.id));
       let pages = [];
@@ -495,39 +455,22 @@ export function DirectedProcedureModule({ onLogout }) {
         const addressesArray = row.address ? row.address.split('\n') : [];
         const partiesArray = row.parties || [];
 
-        // ON CHERCHE TOUS LES ACCUSÉS POUR CE DOSSIER
         let hasSuspect = false;
         rolesArray.forEach((role, idx) => {
             if (role.includes('المتهم')) {
                 hasSuspect = true;
-                const rowData = {
-                  documentType: 'يوجه',
-                  suspectName: partiesArray[idx] || partiesArray[0] || '',
-                  address: addressesArray[idx] || row.address || '',
-                  fileNumber: row.fileNumber || row.file_number,
-                  issueDate: issueDate,
-                  mainText: defaultMainText,
-                };
+                const rowData = { documentType: 'يوجه', suspectName: partiesArray[idx] || partiesArray[0] || '', address: addressesArray[idx] || row.address || '', fileNumber: row.fileNumber || row.file_number, issueDate: issueDate, mainText: defaultMainText };
                 pages.push(generateWordHTML(rowData, signerName, signerRole));
             }
         });
 
-        // Sécurité: Si on ne trouve pas le mot 'المتهم', on prend le 1er pour éviter un dossier vide
         if(!hasSuspect) {
-           const rowDataFallback = {
-              documentType: 'يوجه',
-              suspectName: partiesArray[0] || '',
-              address: addressesArray[0] || row.address || '',
-              fileNumber: row.fileNumber || row.file_number,
-              issueDate: issueDate,
-              mainText: defaultMainText,
-            };
+            const rowDataFallback = { documentType: 'يوجه', suspectName: partiesArray[0] || '', address: addressesArray[0] || row.address || '', fileNumber: row.fileNumber || row.file_number, issueDate: issueDate, mainText: defaultMainText };
             pages.push(generateWordHTML(rowDataFallback, signerName, signerRole));
         }
       });
 
       const allPagesHtml = pages.join("<br clear='all' style='mso-special-character:line-break;page-break-before:always' />");
-
       const wordDocumentHTML = `
         <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
         <head>
@@ -541,9 +484,7 @@ export function DirectedProcedureModule({ onLogout }) {
             p { margin: 0; padding: 0; }
           </style>
         </head>
-        <body>
-          ${allPagesHtml}
-        </body>
+        <body>${allPagesHtml}</body>
         </html>
       `;
 
@@ -558,22 +499,19 @@ export function DirectedProcedureModule({ onLogout }) {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
+      // 🔥 Archivage automatique après impression groupée
+      if (!isArchiveView) {
+        setArchivedIds(prev => [...new Set([...prev, ...selectedIds])]);
+      }
       setSelectedIds([]); 
-      Swal.fire({
-        icon: 'success',
-        title: 'تم التنزيل!',
-        text: 'تم تجهيز الملف المجمع بنجاح',
-        confirmButtonColor: '#003366',
-        timer: 2000
-      });
+      Swal.fire({ icon: 'success', title: 'تم التنزيل!', text: 'تم تجهيز الملف المجمع ونقل الملفات للأرشيف', confirmButtonColor: '#003366', timer: 2500 });
 
     } catch (error) {
-      console.error(error);
       Swal.fire({ icon: 'error', title: 'خطأ', text: 'حدث خطأ أثناء التجميع', confirmButtonColor: '#003366' });
     }
   };
 
-  // --- دوال الجداول والبحث ---
+  // --- دوال الجداول والبحث مع فلتر الأرشيف ---
   const splitText = (text, separator = '\n') => {
     if (!text) return [];
     return text.split(separator).filter(item => item.trim() !== '');
@@ -591,10 +529,17 @@ export function DirectedProcedureModule({ onLogout }) {
   }, [data]);
 
   const filteredData = data.filter(row => {
+    // 1. فلتر الأرشيف
+    const isArchived = archivedIds.includes(row.id);
+    if (isArchiveView && !isArchived) return false;
+    if (!isArchiveView && isArchived) return false;
+
+    // 2. فلتر البحث والصفة
     const query = searchQuery.toLowerCase();
     const fileNum = (row.fileNumber || row.file_number || '').toLowerCase();
     const matchSearch = !searchQuery || fileNum.includes(query) || (row.parties && row.parties.some(party => party.toLowerCase().includes(query)));
     const matchRole = !selectedRole || (row.role && row.role.includes(selectedRole));
+    
     return matchSearch && matchRole;
   });
 
@@ -622,32 +567,67 @@ export function DirectedProcedureModule({ onLogout }) {
         {/* Header & Actions */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-200 pb-6">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-[#003366] rounded-2xl shadow-lg flex items-center justify-center border-2 border-[#D4AF37]/30">
-              <FileText className="w-7 h-7 text-[#D4AF37]" />
+            <div className={`w-14 h-14 rounded-2xl shadow-lg flex items-center justify-center border-2 border-[#D4AF37]/30 ${isArchiveView ? 'bg-gray-600' : 'bg-[#003366]'}`}>
+              {isArchiveView ? <Archive className="w-7 h-7 text-[#D4AF37]" /> : <FileText className="w-7 h-7 text-[#D4AF37]" />}
             </div>
             <div>
-              <h1 className="text-3xl font-extrabold text-[#003366] tracking-tight">إجراء يوجه</h1>
-              <p className="text-gray-500 mt-1 font-medium">إدارة وتوجيه الإجراءات التنفيذية</p>
+              <h1 className="text-3xl font-extrabold text-[#003366] tracking-tight">{isArchiveView ? 'أرشيف الإجراءات' : 'إجراء يوجه'}</h1>
+              <p className="text-gray-500 mt-1 font-medium">{isArchiveView ? 'الملفات التي تم طباعتها مسبقاً' : 'إدارة وتوجيه الإجراءات التنفيذية'}</p>
             </div>
           </div>
           
-          <div className="flex gap-3">
-            {/* زر الطباعة المجمعة */}
+          <div className="flex flex-wrap items-center gap-3">
+            
+            {/* زر التبديل بين الأرشيف والملفات النشطة */}
+            <button 
+              onClick={() => { setIsArchiveView(!isArchiveView); setSelectedIds([]); setCurrentPage(1); }}
+              className={`flex items-center gap-2 px-5 py-3.5 rounded-xl font-bold transition-all shadow-sm border ${
+                isArchiveView 
+                ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' 
+                : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+              }`}
+            >
+              {isArchiveView ? <FileText className="w-5 h-5" /> : <Archive className="w-5 h-5" />}
+              <span>{isArchiveView ? 'الرجوع للملفات النشطة' : 'عرض الأرشيف'}</span>
+            </button>
+
+            {/* أزرار الإجراءات على العناصر المحددة */}
             {selectedIds.length > 0 && (
-              <button 
-                onClick={handleBulkPrint} 
-                className="flex items-center gap-2 px-6 py-3.5 bg-emerald-600 text-white rounded-xl font-bold transition-all hover:bg-emerald-700 shadow-lg hover:shadow-xl active:scale-95 animate-in fade-in zoom-in duration-200"
-              >
-                <Printer className="w-5 h-5" />
-                <span>طباعة المحدد ({selectedIds.length})</span>
-              </button>
+              <>
+                {isArchiveView ? (
+                  // إجراءات داخل الأرشيف
+                  <>
+                    <button onClick={handleUnarchiveSelected} className="flex items-center gap-2 px-5 py-3.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-md">
+                      <RotateCcw className="w-5 h-5" />
+                      <span>استرجاع ({selectedIds.length})</span>
+                    </button>
+                    <button onClick={handleBulkDelete} className="flex items-center gap-2 px-5 py-3.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 shadow-md">
+                      <Trash2 className="w-5 h-5" />
+                      <span>حذف نهائي من القاعدة ({selectedIds.length})</span>
+                    </button>
+                  </>
+                ) : (
+                  // إجراءات داخل الملفات النشطة
+                  <>
+                    <button onClick={() => handleBulkPrint('إشعار')} className="flex items-center gap-2 px-5 py-3.5 bg-blue-600 text-white rounded-xl font-bold transition-all hover:bg-blue-700 shadow-lg">
+                      <Printer className="w-5 h-5" />
+                      <span>إشعارات يوجه ({selectedIds.length})</span>
+                    </button>
+                  </>
+                )}
+              </>
             )}
 
-            <input type="file" accept=".xlsx, .xls, .csv" ref={fileInputRef} onChange={handleExcelUpload} className="hidden" />
-            <button onClick={() => fileInputRef.current.click()} disabled={isLoading} className={`flex items-center gap-2 px-6 py-3.5 bg-[#D4AF37] text-[#003366] rounded-xl font-bold transition-all ${isLoading ? 'opacity-50 cursor-wait' : 'hover:bg-[#C5A028] shadow-lg hover:shadow-xl active:scale-95'}`}>
-              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}
-              <span>استيراد ملف Excel</span>
-            </button>
+            {/* الاستيراد متاح فقط في الملفات النشطة */}
+            {!isArchiveView && (
+              <>
+                <input type="file" accept=".xlsx, .xls, .csv" ref={fileInputRef} onChange={handleExcelUpload} className="hidden" />
+                <button onClick={() => fileInputRef.current.click()} disabled={isLoading} className={`flex items-center gap-2 px-5 py-3.5 bg-[#D4AF37] text-[#003366] rounded-xl font-bold transition-all ${isLoading ? 'opacity-50 cursor-wait' : 'hover:bg-[#C5A028] shadow-md'}`}>
+                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}
+                  <span>استيراد ملف Excel</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -705,7 +685,7 @@ export function DirectedProcedureModule({ onLogout }) {
                   <tr>
                     <td colSpan="7" className="text-center py-12 text-gray-500 font-medium flex flex-col items-center justify-center gap-2">
                       <Search className="w-8 h-8 text-gray-300" />
-                      <span>لا توجد بيانات مطابقة لبحثك</span>
+                      <span>{isArchiveView ? 'لا توجد ملفات في الأرشيف' : 'لا توجد بيانات مطابقة لبحثك'}</span>
                     </td>
                   </tr>
                 ) : (
@@ -726,7 +706,7 @@ export function DirectedProcedureModule({ onLogout }) {
                     const displayDecisions = visibleIndices.map(i => allDecisions[i]).filter(d => d !== undefined);
 
                     return (
-                      <tr key={row.id} className={`hover:bg-blue-50/40 transition-colors group ${selectedIds.includes(row.id) ? 'bg-blue-50/60' : ''}`}>
+                      <tr key={row.id} className={`hover:bg-blue-50/40 transition-colors group ${selectedIds.includes(row.id) ? 'bg-blue-50/60' : ''} ${isArchiveView ? 'bg-gray-50/30' : ''}`}>
                         <td className="px-5 py-5 text-center align-top">
                           <input 
                             type="checkbox" 
@@ -775,9 +755,11 @@ export function DirectedProcedureModule({ onLogout }) {
                             <button onClick={() => handleEditClick(row)} className="p-2 text-[#D4AF37] hover:bg-[#D4AF37]/10 rounded-lg transition-colors border border-transparent hover:border-[#D4AF37]/20" title="تعديل">
                               <Pencil className="w-4 h-4" />
                             </button>
-                            <button onClick={() => handlePrintClick(row)} className="p-2 text-[#003366] hover:bg-[#003366]/10 rounded-lg transition-colors border border-transparent hover:border-[#003366]/20" title="تجهيز الطباعة (Word)">
-                              <Printer className="w-4 h-4" />
-                            </button>
+                            {!isArchiveView && (
+                              <button onClick={() => handlePrintClick(row)} className="p-2 text-[#003366] hover:bg-[#003366]/10 rounded-lg transition-colors border border-transparent hover:border-[#003366]/20" title="تجهيز الطباعة (Word)">
+                                <Printer className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -794,7 +776,6 @@ export function DirectedProcedureModule({ onLogout }) {
                 عرض <span className="font-bold text-gray-700">{startIndex + 1}</span> إلى <span className="font-bold text-gray-700">{Math.min(endIndex, filteredData.length)}</span> من أصل <span className="font-bold text-gray-700">{filteredData.length}</span> سجلات
               </span>
               <div className="flex items-center gap-2">
-                {/* --- تم تغيير الأزرار هنا فقط --- */}
                 <button 
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
@@ -895,7 +876,7 @@ export function DirectedProcedureModule({ onLogout }) {
             <div className="px-6 py-4 bg-gray-50 border-t flex justify-end gap-3 rounded-b-2xl">
               <button onClick={() => setIsPrintModalOpen(false)} className="px-5 py-2.5 text-gray-600 bg-white border border-gray-300 rounded-xl font-bold hover:bg-gray-100">إلغاء</button>
               <button onClick={handleDownloadWord} className="flex items-center gap-2 px-6 py-2.5 bg-[#003366] text-white rounded-xl font-bold hover:bg-[#002244] shadow-md">
-                <Download className="w-4 h-4" /> تنزيل ملف Word
+                <Download className="w-4 h-4" />طباعة يوجه
               </button>
             </div>
           </div>

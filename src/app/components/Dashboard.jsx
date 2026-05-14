@@ -1,16 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
-import { KPICards } from './KPICards';
-import { DataTable } from './DataTable';
-import { FileDetailsModal } from './FileDetailsModal';
-import { NotificationPanel } from './NotificationPanel';
+import { KPICards } from './KPICards'
 
 import { DocumentGenerator } from './DocumentGenerator';
-import { RecouvrementForm } from './RecouvrementForm';
-import { NotificationForm } from './NotificationForm';
 import { FraisModule } from './TassfiyatSawaer/FraisModule';
-import { RegistryOfExtracts } from './RegistryOfExtracts';
+
 import { OutstandingDebtsModule } from './OutstandingDebtsModule';
 import { UserManagementModule } from './UserManagementModule';
 import DirectedProcedureModule from './DirectedProcedureModule';
@@ -90,7 +85,6 @@ export function Dashboard({ onLogout }) {
           {activeMenu === 'bureau' && role === 'admin' && (
             <>
               <KPICards />
-              <DataTable onFileClick={setSelectedFile} />
             </>
           )}
 
