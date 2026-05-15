@@ -37,7 +37,7 @@ export function Sidebar({ activeMenu, onMenuChange, role }) {
           <div className="text-right overflow-hidden">
             <h1 className="font-bold text-lg truncate">E-Tahssil</h1>
             <p className="text-xs text-[#D4AF37] truncate font-medium">
-              {role === 'writer' ? 'قسم تحرير المحاضر ' : 'شعبة التبليغ والتحصيل'}
+              {role === 'writer' ? 'شعبة القضاء الإستعجالي' : 'شعبة التبليغ والتحصيل'}
             </p>
           </div>
         </div>
