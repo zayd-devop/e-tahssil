@@ -74,7 +74,7 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
       Swal.fire({
         icon: 'error',
         title: 'خطأ في الاتصال',
-        text: 'تعذر الاتصال بالسيرفر، تأكد من تشغيل (php artisan serve)',
+        text: 'تعذر الاتصال بالسيرفر',
         confirmButtonColor: '#003366'
       });
     } finally {

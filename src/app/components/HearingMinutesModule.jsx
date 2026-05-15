@@ -10,7 +10,8 @@ import {
   ChevronRight,
   ChevronLeft,
   Calendar,
-  FileText // أضفنا هذه الأيقونة لزر الطباعة المجمعة
+  FileText,
+  UserPen // Ajout d'une petite icône pour le greffier
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
@@ -18,13 +19,15 @@ export default function HearingMinutesModule() {
   const [tableData, setTableData] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState(''); 
-  const [isLoading, setIsLoading] = useState(true);
   
-  // --- إضافة: حالة التحديد المتعدد ---
+  // NOUVEAU : State pour le nom du greffier
+  const [clerkName, setClerkName] = useState(''); 
+  
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState([]);
   
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 25;
+  const itemsPerPage = 20;
 
   const fileInputRef = useRef(null);
 
@@ -80,7 +83,7 @@ export default function HearingMinutesModule() {
     formData.append('file', file);
 
     Swal.fire({
-      title: 'جاري معالجة ملف Excel...',
+      title: 'جاري معالجة ملف السجل العام...',
       allowOutsideClick: false,
       didOpen: () => { Swal.showLoading(); }
     });
@@ -101,7 +104,7 @@ export default function HearingMinutesModule() {
 
       setTableData(responseData.data);
       setCurrentPage(1); 
-      setSelectedIds([]); // تفريغ التحديد بعد الاستيراد
+      setSelectedIds([]); 
       Swal.fire({ icon: 'success', title: 'تم استيراد البيانات بنجاح', timer: 2000, showConfirmButton: false });
 
     } catch (error) {
@@ -111,10 +114,17 @@ export default function HearingMinutesModule() {
     }
   };
 
-  // --- إضافة: دوال الطباعة ---
   const handlePrintSingle = async (id, fileNumber) => {
+    // Vérification : Exiger le nom du greffier avant d'imprimer
+    if (!clerkName.trim()) {
+        Swal.fire({ icon: 'warning', title: 'تنبيه', text: 'المرجو إدخال اسم كاتب الضبط أولاً فوق الجدول', confirmButtonColor: '#003366' });
+        return;
+    }
+
     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-    const url = `http://127.0.0.1:8000/api/hearing-minutes/print/${id}`;
+    
+    // On passe le nom du greffier dans l'URL pour une requête GET
+    const url = `http://127.0.0.1:8000/api/hearing-minutes/print/${id}?clerk_name=${encodeURIComponent(clerkName)}`;
 
     try {
         Swal.fire({ 
@@ -146,6 +156,12 @@ export default function HearingMinutesModule() {
 
   const handleMergedPrint = async () => {
     if (selectedIds.length === 0) return;
+
+    // Vérification : Exiger le nom du greffier avant l'impression groupée
+    if (!clerkName.trim()) {
+        Swal.fire({ icon: 'warning', title: 'تنبيه', text: 'المرجو إدخال اسم كاتب الضبط أولاً فوق الجدول', confirmButtonColor: '#003366' });
+        return;
+    }
     
     try {
       Swal.fire({ 
@@ -161,7 +177,11 @@ export default function HearingMinutesModule() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ ids: selectedIds })
+        // On envoie le nom du greffier dans le Body de la requête POST
+        body: JSON.stringify({ 
+            ids: selectedIds,
+            clerk_name: clerkName 
+        })
       });
 
       if (!response.ok) throw new Error();
@@ -175,7 +195,7 @@ export default function HearingMinutesModule() {
       link.click();
       link.remove();
       
-      setSelectedIds([]); // تفريغ التحديد بعد الطباعة
+      setSelectedIds([]); 
       Swal.close();
     } catch (error) { 
       Swal.fire({ icon: 'error', title: 'خطأ', text: 'فشل إنشاء الملف المجمع' }); 
@@ -201,7 +221,18 @@ export default function HearingMinutesModule() {
   const goToNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
   const goToPrevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
 
-  // --- إضافة: منطق التحديد ---
+  const getVisiblePages = () => {
+    const maxVisible = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let end = Math.min(totalPages, start + maxVisible - 1);
+
+    if (end - start + 1 < maxVisible) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  };
+
   const toggleSelect = (id) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
@@ -234,7 +265,7 @@ export default function HearingMinutesModule() {
           </div>
           <div>
             <h1 className="text-3xl font-extrabold text-[#003366] tracking-tight">محاضر الأحكام</h1>
-            <p className="text-gray-500 mt-1 font-medium">إدارة واستعراض أحكام الملفات المستوردة من Excel</p>
+            <p className="text-gray-500 mt-1 font-medium">محاضر احكام القضاء الاستعجالي</p>
           </div>
         </div>
 
@@ -242,9 +273,13 @@ export default function HearingMinutesModule() {
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
           
+          {/* BARRE D'ACTIONS ET FILTRES */}
           <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-white flex-wrap gap-4">
-            <div className="flex items-center gap-3 flex-1 min-w-[300px]">
-              <div className="relative flex-1">
+            
+            <div className="flex items-center gap-3 flex-1 flex-wrap">
+              
+              {/* 1. Recherche */}
+              <div className="relative flex-1 min-w-[200px]">
                 <input 
                   type="text" 
                   value={searchQuery}
@@ -255,6 +290,7 @@ export default function HearingMinutesModule() {
                 <Search className="w-4 h-4 text-gray-400 absolute right-4 top-1/2 -translate-y-1/2" />
               </div>
 
+              {/* 2. Filtre Date */}
               <div className="relative">
                 <input 
                   type="date" 
@@ -264,10 +300,22 @@ export default function HearingMinutesModule() {
                 />
                 <Calendar className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
+
+              {/* 3. NOUVEAU : Input pour le nom du greffier */}
+              <div className="relative flex-1 min-w-[200px]">
+                <input 
+                  type="text" 
+                  value={clerkName}
+                  onChange={(e) => setClerkName(e.target.value)}
+                  placeholder="أدخل اسم كاتب الضبط هنا..." 
+                  className="w-full pr-11 py-2.5 bg-amber-50 border border-amber-200 text-[#003366] placeholder-amber-700/50 rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#D4AF37] outline-none"
+                />
+                <UserPen className="w-4 h-4 text-amber-600 absolute right-4 top-1/2 -translate-y-1/2" />
+              </div>
+
             </div>
             
             <div className="flex items-center gap-3">
-              {/* --- إضافة: زر الطباعة المجمعة يظهر فقط عند التحديد --- */}
               {selectedIds.length > 0 && (
                 <button 
                   onClick={handleMergedPrint}
@@ -278,9 +326,12 @@ export default function HearingMinutesModule() {
                 </button>
               )}
 
-              <button onClick={() => fileInputRef.current.click()} className="flex items-center gap-2 px-5 py-2.5 bg-[#003366] text-white rounded-xl font-bold hover:bg-[#002244] shadow-md transition-all">
+              <button 
+                onClick={() => fileInputRef.current.click()} 
+                className="flex items-center gap-2 px-5 py-2.5 bg-[#003366] text-white border border-[#003366] rounded-xl font-bold hover:bg-[#002244] transition-all"
+              >
                 <FilePlus2 className="w-5 h-5 text-[#D4AF37]" />
-                <span>استيراد ملف Excel</span>
+                <span> السجل العام</span>
               </button>
             </div>
           </div>
@@ -289,7 +340,6 @@ export default function HearingMinutesModule() {
             <table className="w-full text-sm text-right">
               <thead className="bg-gray-50 text-gray-700 font-bold border-b border-gray-200">
                 <tr>
-                  {/* --- إضافة: Checkbox تحديد الكل --- */}
                   <th className="px-4 py-4 text-center w-12">
                     <input 
                       type="checkbox" 
@@ -299,6 +349,9 @@ export default function HearingMinutesModule() {
                     />
                   </th>
                   <th className="px-6 py-4">رقم الملف</th>
+                  <th className="px-6 py-4">المدعي</th>
+                  <th className="px-6 py-4">المدعى عليه</th>
+            
                   <th className="px-6 py-4">نوع الحكم</th>
                   <th className="px-6 py-4">رقم الحكم</th>
                   <th className="px-6 py-4">تاريخ الحكم</th>
@@ -311,7 +364,7 @@ export default function HearingMinutesModule() {
               <tbody className="divide-y divide-gray-100">
                 {isLoading ? (
                   <tr>
-                    <td colSpan="9" className="px-6 py-20 text-center">
+                    <td colSpan="11" className="px-6 py-20 text-center">
                       <Loader2 className="w-10 h-10 animate-spin mx-auto text-[#D4AF37]" />
                       <p className="mt-4 text-gray-500">جاري تحميل البيانات...</p>
                     </td>
@@ -319,7 +372,6 @@ export default function HearingMinutesModule() {
                 ) : currentItems.length > 0 ? (
                   currentItems.map((row) => (
                     <tr key={row.id} className={`hover:bg-blue-50/40 transition-colors ${selectedIds.includes(row.id) ? 'bg-blue-50/60' : ''}`}>
-                      {/* --- إضافة: Checkbox لتحديد الصف --- */}
                       <td className="px-4 py-4 text-center">
                         <input 
                           type="checkbox" 
@@ -329,8 +381,14 @@ export default function HearingMinutesModule() {
                         />
                       </td>
                       <td className="px-6 py-4 font-bold text-[#003366] whitespace-nowrap">{row.file_number}</td>
+                      <td className="px-6 py-4 font-semibold text-gray-900 max-w-[150px] truncate" title={row.plaintiff}>
+                        {row.plaintiff}
+                      </td>
+                      <td className="px-6 py-4 text-gray-700 max-w-[150px] truncate" title={row.defendant}>
+                        {row.defendant}
+                      </td>
                       <td className="px-6 py-4">
-                        <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${row.result_color}`}>
+                        <span className={`inline-block whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-bold border ${row.result_color}`}>
                           {row.judgment_type}
                         </span>
                       </td>
@@ -350,7 +408,6 @@ export default function HearingMinutesModule() {
                       <td className="px-6 py-4 text-left">
                         <div className="flex justify-end gap-2">
                           <button className="p-2 text-gray-400 hover:text-[#D4AF37] transition-colors"><Edit className="w-4 h-4" /></button>
-                          {/* --- تعديل: ربط زر الطباعة بالدالة --- */}
                           <button 
                             onClick={() => handlePrintSingle(row.id, row.file_number)}
                             className="p-2 text-gray-400 hover:text-[#003366] transition-colors"
@@ -364,7 +421,7 @@ export default function HearingMinutesModule() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="9" className="px-6 py-20 text-center text-gray-400">
+                    <td colSpan="11" className="px-6 py-20 text-center text-gray-400">
                       لا توجد أحكام تطابق بحثك.
                     </td>
                   </tr>
@@ -374,32 +431,32 @@ export default function HearingMinutesModule() {
           </div>
 
           {totalPages > 1 && (
-            <div className="p-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
+            <div className="p-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between flex-wrap gap-4">
               <span className="text-xs font-bold text-gray-500">
                 عرض {indexOfFirstItem + 1} إلى {Math.min(indexOfLastItem, filteredData.length)} من أصل {filteredData.length} سجل
               </span>
               
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2" dir="ltr">
                 <button 
                   onClick={goToPrevPage} 
                   disabled={currentPage === 1}
                   className="p-2 rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                 >
-                  <ChevronRight className="w-5 h-5 text-[#003366]" />
+                  <ChevronLeft className="w-5 h-5 text-[#003366]" />
                 </button>
 
                 <div className="flex items-center gap-1">
-                  {[...Array(totalPages)].map((_, i) => (
+                  {getVisiblePages().map((page) => (
                     <button
-                      key={i + 1}
-                      onClick={() => setCurrentPage(i + 1)}
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
                       className={`w-9 h-9 rounded-lg text-xs font-bold transition-all ${
-                        currentPage === i + 1 
+                        currentPage === page 
                         ? 'bg-[#003366] text-[#D4AF37] shadow-md' 
                         : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
                       }`}
                     >
-                      {i + 1}
+                      {page}
                     </button>
                   ))}
                 </div>
@@ -409,7 +466,7 @@ export default function HearingMinutesModule() {
                   disabled={currentPage === totalPages}
                   className="p-2 rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                 >
-                  <ChevronLeft className="w-5 h-5 text-[#003366]" />
+                  <ChevronRight className="w-5 h-5 text-[#003366]" />
                 </button>
               </div>
             </div>

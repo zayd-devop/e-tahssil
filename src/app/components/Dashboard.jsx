@@ -12,63 +12,56 @@ import DirectedProcedureModule from './DirectedProcedureModule';
 import CorrespondencesModule from './CorrespondencesModule';
 import { ProductionCards } from './ProductionCards';
 import ProceduresTabsContainer from './ProceduresTabsContainer';
+import HearingMinutesModule from './HearingMinutesModule';
 
 export function Dashboard({ onLogout }) {
-  // 🔥 1. On récupère le VRAI rôle depuis la session de connexion
+  // 1. On récupère le VRAI rôle depuis la session de connexion
   const [role, setRole] = useState(() => {
     return sessionStorage.getItem('userRole') || 'clerk'; // 'clerk' par défaut pour plus de sécurité
   });
   
-  // 2. Initialisation du menu actif
+  // 2. Initialisation intelligente et propre du menu actif
   const [activeMenu, setActiveMenu] = useState(() => {
-    const savedMenu = localStorage.getItem('dashboard_active_menu');
-    if (savedMenu) return savedMenu;
+    // 🔥 1. Si c'est un writer, il n'a droit qu'à ça, on ignore le reste
+    if (role === 'writer') return 'hearing';
+
+    const savedMenu = sessionStorage.getItem('dashboard_active_menu');
     
-    // Si l'utilisateur est un admin, il atterrit sur le bureau, sinon sur la production
+    // 🔥 2. Si on a un menu sauvegardé valide, on l'utilise
+    // (On évite de charger 'notification' ou 'recouvrement' qui sont commentés et causent la page blanche)
+    if (savedMenu && savedMenu !== 'notification' && savedMenu !== 'recouvrement') {
+        return savedMenu;
+    }
+    
+    // 🔥 3. Comportement par défaut pour les nouveaux utilisateurs
     return role === 'admin' ? 'bureau' : 'production';
   });
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
 
-  // 3. Sécurité supplémentaire : 
-  // Si on est connecté en tant que clerk, et qu'on essaie de forcer un menu admin
+  // 3. Sécurité STRICTE : Empêche la page blanche et les accès non autorisés
   useEffect(() => {
-    if (role !== 'admin' && (activeMenu === 'bureau' || activeMenu === 'users')) {
+    // Si c'est un writer et qu'il essaie d'aller ailleurs, on le force sur hearing
+    if (role === 'writer' && activeMenu !== 'hearing') {
+      setActiveMenu('hearing');
+    } 
+    // Si c'est un clerk et qu'il essaie d'aller sur les pages admin
+    else if (role !== 'admin' && role !== 'writer' && (activeMenu === 'bureau' || activeMenu === 'users')) {
       setActiveMenu('production');
     }
   }, [role, activeMenu]);
 
   // 4. Sauvegarde du menu actif
   useEffect(() => {
-    localStorage.setItem('dashboard_active_menu', activeMenu);
+    if (activeMenu) {
+        sessionStorage.setItem('dashboard_active_menu', activeMenu);
+    }
   }, [activeMenu]);
-
-  const texts = {
-    bureau: 'لوحة القيادة',
-    bureauDesc: 'مرحباً بك في لوحة القيادة. يمكنك إدارة القضايا وتوزيعها هنا.',
-    extraits: 'سجل المستخرجات',
-    extraitsDesc: 'وحدة سجل المستخرجات وسندات المداخيل.',
-    notification: 'مكتب التبليغ',
-    notificationDesc: 'إدارة عمليات وإجراءات التبليغ.',
-    frais: 'تصفية الصوائر',
-    fraisDesc: 'وحدة حساب وتصفية الصوائر القضائية.',
-    recouvrement: 'التحصيل',
-    recouvrementDesc: 'وحدة التحصيل وإدارة المبالغ المستردة.',
-    tresorerie: 'التنسيق مع الخزينة',
-    tresorerieDesc: 'التنسيق المالي مع الخزينة العامة.',
-    production: 'بطائق الإنتاج',
-    productionDesc: 'إدخال البيانات اليومية للإنتاج',
-    documents: 'توليد الوثائق',
-    documentsDesc: 'توليد المستندات الرسمية',
-  };
 
   return (
     <div className="flex h-screen bg-[#F8F9FA] rtl" dir="rtl">
-      {/* 🔥 On passe le 'role' à la Sidebar. 
-        Comme ta Sidebar a déjà la condition `if (item.adminOnly && role !== 'admin')`, 
-        le bouton des utilisateurs va disparaître pour les clerks ! 
-      */}
+      
       <Sidebar activeMenu={activeMenu} onMenuChange={setActiveMenu} role={role} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -76,52 +69,37 @@ export function Dashboard({ onLogout }) {
           onNotificationClick={() => setShowNotifications(!showNotifications)}
           onLogout={onLogout}
           role={role}
-          // On garde la fonction onRoleChange si tu as un sélecteur dans ta TopBar
           onRoleChange={setRole}
         />
         
         <main className="flex-1 overflow-y-auto p-6">
-          {/* Seul l'admin voit le bureau (tableaux de bord globaux) */}
-          {activeMenu === 'bureau' && role === 'admin' && (
-            <>
-              <KPICards />
-            </>
-          )}
+          {/* Rendu des composants basé sur le menu exact */}
+          
+          {activeMenu === 'bureau' && role === 'admin' && <KPICards />}
+          
+          {activeMenu === 'hearing' && role === 'writer' && <HearingMinutesModule />}
 
           {activeMenu === 'production' && <ProductionCards />}
+          
           {activeMenu === 'documents' && <DocumentGenerator />}
+          
           {activeMenu === 'outstanding' && <OutstandingDebtsModule />}
+          
           {activeMenu === 'directed' && <ProceduresTabsContainer />}
 
           {activeMenu === 'correspondences' && <CorrespondencesModule />}
 
-          {/* {activeMenu === 'recouvrement' && <RecouvrementForm />}
-          
-          {activeMenu === 'notification' && <NotificationForm />} */}
-
           {activeMenu === 'frais' && <FraisModule />}
 
-          {/* Seul l'admin a le droit de voir et rendre le module des utilisateurs */}
           {activeMenu === 'users' && role === 'admin' && <UserManagementModule />}
-
-          {['tresorerie'].includes(activeMenu) && (
-            <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">{texts[activeMenu]}</h2>
-              <p className="text-gray-600">{texts[`${activeMenu}Desc`]}</p>
-            </div>
-          )}
+          
         </main>
       </div>
 
-      {selectedFile && (
-        <FileDetailsModal 
-          file={selectedFile} 
-          onClose={() => setSelectedFile(null)} 
-        />
-      )}
-      
+      {/* Le reste de tes composants modals (FileDetailsModal, etc.) ... */}
       {showNotifications && (
-        <NotificationPanel onClose={() => setShowNotifications(false)} />
+        // <NotificationPanel onClose={() => setShowNotifications(false)} />
+        null
       )}
     </div>
   );

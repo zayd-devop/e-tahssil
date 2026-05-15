@@ -10,13 +10,13 @@ export default function App() {
   });
 
   const [userRole, setUserRole] = useState(() => {
-    const savedRole = localStorage.getItem('app_user_role');
+    const savedRole = sessionStorage.getItem('app_user_role');
     return savedRole || 'admin';
   });
 
-  // 2. تحديث الرول في الـ localStorage عند تغييره
+  // 2. تحديث الرول في الـ sessionStorage عند تغييره
   useEffect(() => {
-    localStorage.setItem('app_user_role', userRole);
+    sessionStorage.setItem('app_user_role', userRole);
   }, [userRole]);
 
   // 3. دالة تسجيل الخروج (Logout) الحقيقية والمربوطة بالـ API
@@ -41,7 +41,7 @@ export default function App() {
       sessionStorage.removeItem('token');
       sessionStorage.removeItem('user');
       sessionStorage.removeItem('app_user_role'); // اختياري إذا أردت مسح الرول أيضاً
-      // localStorage.removeItem('app_user_role'); // اختياري إذا أردت مسح الرول أيضاً
+      // sessionStorage.removeItem('app_user_role'); // اختياري إذا أردت مسح الرول أيضاً
       
       // إرجاع المستخدم لصفحة الدخول
       setIsAuthenticated(false);

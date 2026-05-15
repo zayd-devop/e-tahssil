@@ -17,13 +17,11 @@ export function Sidebar({ activeMenu, onMenuChange, role }) {
   const menuItems = [
     { id: 'bureau', icon: LayoutDashboard, label: 'لوحة القيادة', adminOnly: true },
     { id: 'production', icon: ClipboardList, label: 'بطائق الإنتاج' },
+    { id: 'hearing', icon: Gavel, label: 'محضر الجلسة ', writerOnly: true },
     { id: 'directed', icon: FileSpreadsheet, label: 'إجراء يوجه' },
     { id: 'correspondences', icon: Send, label: 'المراسلات'},
     { id: 'outstanding', icon: BookOpen, label: 'الباقي بدون تحصيل' },
-    // { id: 'notification', icon: Bell, label: 'تبليغ المقررات' },
-    // { id: 'recouvrement', icon: Wallet, label: 'التحصيل' },
     { id: 'frais', icon: Calculator, label: 'تصفية الصوائر' },
-    // { id: 'extraits', icon: BookOpen, label: 'سجل المستخرجات' },
     { id: 'documents', icon: FileSignature, label: 'توليد الوثائق' },
     { id: 'users', icon: Users, label: 'إدارة الموظفين', adminOnly: true },
   ];
@@ -39,7 +37,7 @@ export function Sidebar({ activeMenu, onMenuChange, role }) {
           <div className="text-right overflow-hidden">
             <h1 className="font-bold text-lg truncate">E-Tahssil</h1>
             <p className="text-xs text-[#D4AF37] truncate font-medium">
-              شعبة التبليغ والتحصيل
+              {role === 'writer' ? 'قسم تحرير المحاضر ' : 'شعبة التبليغ والتحصيل'}
             </p>
           </div>
         </div>
@@ -49,9 +47,15 @@ export function Sidebar({ activeMenu, onMenuChange, role }) {
       <nav className="flex-1 p-4 overflow-y-auto">
         <ul className="space-y-2">
           {menuItems.map((item) => {
-            // Cacher les éléments réservés à l'admin si l'utilisateur est un clerk (كاتب)
+            // 1. Cacher les éléments réservés à l'admin si l'utilisateur n'est pas admin
             if (item.adminOnly && role !== 'admin') return null;
             
+            // 2. Cacher les éléments réservés aux writers si l'utilisateur n'est pas writer
+            if (item.writerOnly && role !== 'writer') return null;
+            
+            // 🔥 3. LA SOLUTION EST ICI : Si l'utilisateur est 'writer', on cache TOUT le reste
+            if (role === 'writer' && !item.writerOnly) return null;
+                        
             const isActive = activeMenu === item.id;
             
             return (
@@ -67,7 +71,7 @@ export function Sidebar({ activeMenu, onMenuChange, role }) {
                   <div className={`p-2 rounded-lg transition-colors ${isActive ? 'bg-[#D4AF37]/20' : 'bg-transparent'}`}>
                     <item.icon className={`w-5 h-5 ${isActive ? 'text-[#D4AF37]' : 'text-gray-400'}`} />
                   </div>
-                  <span className="text-sm text-right flex-1  cursor-pointer">
+                  <span className="text-sm text-right flex-1 cursor-pointer">
                     {item.label}
                   </span>
                   {isActive && (
@@ -83,7 +87,7 @@ export function Sidebar({ activeMenu, onMenuChange, role }) {
       {/* Footer */}
       <div className="p-4 border-t border-[#004080]">
         <div className="text-xs text-gray-400 text-center font-medium">
-          © 2026  جميع الحقوق محفوظة
+          © {new Date().getFullYear()} جميع الحقوق محفوظة
         </div>
       </div>
     </aside>
