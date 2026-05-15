@@ -22,6 +22,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
+import Swal from 'sweetalert2';
 
 // Remplace par l'URL de ton backend si nécessaire
 const API_URL = 'http://127.0.0.1:8000/api'; 
@@ -34,15 +35,43 @@ export function KPICards() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Obtenir le mois et l'année actuels par défaut
+  const currentMonth = new Date().getMonth() + 1; 
+  const currentYear = new Date().getFullYear();
+
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+
+  // توليد السنوات تلقائياً
+  const startYear = 2024;
+  const yearsList = Array.from(
+    { length: currentYear - startYear + 1 }, 
+    (_, i) => currentYear - i
+  );
+
+  // Liste des mois pour le select
+  const monthsList = [
+    { id: 1, name: 'يناير' }, { id: 2, name: 'فبراير' }, { id: 3, name: 'مارس' },
+    { id: 4, name: 'أبريل' }, { id: 5, name: 'ماي' }, { id: 6, name: 'يونيو' },
+    { id: 7, name: 'يوليوز' }, { id: 8, name: 'غشت' }, { id: 9, name: 'شتنبر' },
+    { id: 10, name: 'أكتوبر' }, { id: 11, name: 'نونبر' }, { id: 12, name: 'دجنبر' }
+  ];
+
   // Appel API au chargement du composant
   useEffect(() => {
     const fetchDashboardStats = async () => {
       try {
         setIsLoading(true);
-        // Récupération du token depuis le sessionStorage comme demandé
         const token = sessionStorage.getItem('token'); 
 
-        const response = await fetch(`${API_URL}/dashboard-stats`, {
+        const queryParams = new URLSearchParams();
+        queryParams.append('year', selectedYear);
+        
+        if (selectedMonth !== 'ALL') {
+          queryParams.append('month', selectedMonth);
+        }
+
+        const response = await fetch(`${API_URL}/dashboard-stats?${queryParams.toString()}`, {
           method: 'GET',
           headers: { 
             'Authorization': `Bearer ${token}`,
@@ -52,7 +81,7 @@ export function KPICards() {
         });
 
         if (!response.ok) {
-          throw new Error('فشل في تحميل بيانات لوحة القيادة'); // Échec du chargement
+          throw new Error('فشل في تحميل بيانات لوحة القيادة'); 
         }
 
         const data = await response.json();
@@ -66,12 +95,13 @@ export function KPICards() {
     };
 
     fetchDashboardStats();
-  }, []);
+    
+  }, [selectedMonth, selectedYear]);
 
   // --------------------------------------------------------
-  // 1. Écran de chargement
+  // 1. Écran de chargement GLOBAL
   // --------------------------------------------------------
-  if (isLoading) {
+  if (isLoading && !dashboardData) {
     return (
       <div className="flex items-center justify-center min-h-[80vh] bg-[#F9FAFB] w-full">
         <div className="flex flex-col items-center gap-4">
@@ -105,8 +135,53 @@ export function KPICards() {
     clerksData = [] 
   } = dashboardData || {};
 
-  // Sécurité : au cas où le filtre n'existe pas encore dans les données chargées
   const currentChartData = productivityDataSets[activeFilter] || { data: [], average: 0, unit: '' };
+
+  const handleExportExcel = async () => {
+    try {
+      Swal.fire({
+        title: 'جاري تحضير التقرير...',
+        didOpen: () => Swal.showLoading(),
+        allowOutsideClick: false
+      });
+
+      const token = sessionStorage.getItem('token');
+      const queryParams = new URLSearchParams();
+      queryParams.append('year', selectedYear);
+      if (selectedMonth !== 'ALL') {
+        queryParams.append('month', selectedMonth);
+      }
+
+      // طلب الملف من السيرفر
+      const response = await fetch(`${API_URL}/dashboard/export?${queryParams.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) throw new Error('فشل التصدير');
+
+      // معالجة الملف المستلم كـ Blob للتحميل
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `تقرير_الإنتاج_${selectedYear}_${selectedMonth}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      
+      Swal.close();
+      Swal.fire({ icon: 'success', title: 'تم تحميل التقرير بنجاح', timer: 1500, showConfirmButton: false });
+
+    } catch (error) {
+      console.error(error);
+      Swal.fire({ icon: 'error', title: 'خطأ', text: 'حدث مشكلة أثناء تصدير الملف' });
+    }
+};
+
+  
 
   // --------------------------------------------------------
   // 4. Rendu Principal de la page
@@ -240,30 +315,61 @@ export function KPICards() {
           </div>
         </div>
 
-        {/* --- Middle-Lower Section - Productivity (Doughnut Chart) --- */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+        {/* 3. Middle-Lower Section - Productivity (Doughnut Chart avec Filtre) */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 relative overflow-hidden">
+          
+          {isLoading && dashboardData && (
+            <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-20 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-4 border-[#003366]"></div>
+            </div>
+          )}
+
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-8 gap-4">
             <h2 className="text-lg font-bold text-[#003366]">مردودية الموظفين مقارنة بالمعدل العام</h2>
-            <select 
-              className="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl focus:ring-[#003366] focus:border-[#003366] block px-4 py-2.5 outline-none font-bold cursor-pointer hover:bg-gray-100 transition-colors shadow-sm"
-              value={activeFilter}
-              onChange={(e) => setActiveFilter(e.target.value)}
-            >
-              <option value="notifications">عدد الملفات المبلغة</option>
-              <option value="collections">عدد الملفات المحصلة</option>
-              <option value="amounts">المبالغ المحصلة</option>
-            </select>
+            
+            <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+              <select 
+                className="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl focus:ring-[#003366] focus:border-[#003366] px-4 py-2.5 outline-none font-bold cursor-pointer hover:bg-gray-100 transition-colors shadow-sm"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+              >
+                {yearsList.map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+
+              <select 
+                className="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl focus:ring-[#003366] focus:border-[#003366] px-4 py-2.5 outline-none font-bold cursor-pointer hover:bg-gray-100 transition-colors shadow-sm"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+              >
+                <option value="ALL">جميع الأشهر</option>
+                {monthsList.map(month => (
+                  <option key={month.id} value={month.id}>{month.name}</option>
+                ))}
+              </select>
+
+              <select 
+                className="bg-gray-50 border border-gray-200 text-[#003366] text-sm rounded-xl focus:ring-[#003366] focus:border-[#003366] px-4 py-2.5 outline-none font-extrabold cursor-pointer hover:bg-gray-100 transition-colors shadow-sm border-[#003366]/20"
+                value={activeFilter}
+                onChange={(e) => setActiveFilter(e.target.value)}
+              >
+                <option value="notifications">عدد الملفات المبلغة</option>
+                <option value="collections">عدد الملفات المحصلة</option>
+                <option value="amounts">المبالغ المحصلة</option>
+              </select>
+            </div>
           </div>
           
           <div className="flex flex-col md:flex-row items-center justify-center gap-12 h-[350px]">
-            <div className="w-full md:w-1/3 flex flex-col gap-3">
+            <div className="w-full md:w-1/3 flex flex-col gap-3 overflow-y-auto max-h-[300px] pr-2">
               {currentChartData.data.map((entry, index) => (
                 <div key={index} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors border border-gray-100">
                   <div className="flex items-center gap-3">
                     <span className="w-4 h-4 rounded-full" style={{ backgroundColor: entry.fill }}></span>
                     <span className="font-bold text-gray-700">{entry.name}</span>
                   </div>
-                  <span className="font-black text-gray-900">
+                  <span className="font-black text-gray-900 inline-block" dir="ltr">
                     {entry.value.toLocaleString('fr-FR')} <span className="text-xs text-gray-500 font-normal">{currentChartData.unit}</span>
                   </span>
                 </div>
@@ -274,7 +380,7 @@ export function KPICards() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={currentChartData.data}
+                    data={currentChartData.data.length > 0 ? currentChartData.data : [{ value: 1, fill: '#f3f4f6' }]} 
                     cx="50%"
                     cy="50%"
                     innerRadius={90}
@@ -283,21 +389,29 @@ export function KPICards() {
                     dataKey="value"
                     stroke="none"
                   >
-                    {currentChartData.data.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
+                    {currentChartData.data.length > 0 ? (
+                      currentChartData.data.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))
+                    ) : (
+                      <Cell fill="#f3f4f6" /> 
+                    )}
                   </Pie>
-                  <Tooltip 
-                    formatter={(value) => [`${value.toLocaleString('fr-FR')} ${currentChartData.unit}`, 'الإنتاج']}
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', direction: 'rtl' }}
-                    itemStyle={{ fontWeight: 'bold' }}
-                  />
+                  {currentChartData.data.length > 0 && (
+                    <Tooltip 
+                      formatter={(value) => [`${value.toLocaleString('fr-FR')} ${currentChartData.unit}`, 'الإنتاج']}
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', direction: 'rtl' }}
+                      itemStyle={{ fontWeight: 'bold' }}
+                    />
+                  )}
                 </PieChart>
               </ResponsiveContainer>
               
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" dir="rtl">
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none w-full" dir="rtl">
                 <span className="text-xs text-gray-500 font-bold mb-1 tracking-wide">المعدل العام للفريق</span>
-                <span className="text-3xl font-black text-[#003366]">{currentChartData.average.toLocaleString('fr-FR')}</span>
+                <span className="text-3xl font-black text-[#003366] inline-block" dir="ltr">
+                  {currentChartData.average.toLocaleString('fr-FR')}
+                </span>
                 <span className="text-sm text-gray-400 mt-1 font-medium">{currentChartData.unit}</span>
               </div>
             </div>
@@ -305,13 +419,47 @@ export function KPICards() {
         </div>
 
         {/* --- Bottom Section - Detailed Clerk Performance Table --- */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative">
+          
+          {/* 🔥 NOUVEAU : Effet de chargement spécifique au tableau */}
+          {isLoading && dashboardData && (
+            <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-20 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-4 border-[#003366]"></div>
+            </div>
+          )}
+
+          <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white">
             <h2 className="text-lg font-bold text-[#003366]">الإنتاجية الشهرية التفصيلية لكل موظف</h2>
-            <button className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold hover:bg-gray-100 transition-colors">
-              <TrendingUp className="w-4 h-4" />
-              <span>تصدير التقرير</span>
-            </button>
+            
+            {/* 🔥 NOUVEAU : Filtres pour le tableau (Liés aux mêmes States) */}
+            <div className="flex flex-wrap items-center gap-3">
+              <select 
+                className="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl focus:ring-[#003366] focus:border-[#003366] px-4 py-2 outline-none font-bold cursor-pointer hover:bg-gray-100 transition-colors"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+              >
+                {yearsList.map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+
+              <select 
+                className="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl focus:ring-[#003366] focus:border-[#003366] px-4 py-2 outline-none font-bold cursor-pointer hover:bg-gray-100 transition-colors"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+              >
+                <option value="ALL">جميع الأشهر</option>
+                {monthsList.map(month => (
+                  <option key={month.id} value={month.id}>{month.name}</option>
+                ))}
+              </select>
+
+              <button className="flex items-center gap-2 px-4 py-2 bg-[#003366]/5 border border-[#003366]/10 text-[#003366] rounded-xl text-sm font-bold hover:bg-[#003366]/10 transition-colors"
+              onClick={handleExportExcel}>
+                <TrendingUp className="w-4 h-4" />
+                <span>تصدير التقرير</span>
+              </button>
+            </div>
           </div>
           
           <div className="overflow-x-auto">
@@ -329,47 +477,55 @@ export function KPICards() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {clerksData.map((clerk) => (
-                  <tr key={clerk.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${clerk.color}`}>
-                          {clerk.initials}
+                {clerksData.length > 0 ? (
+                  clerksData.map((clerk) => (
+                    <tr key={clerk.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${clerk.color}`}>
+                            {clerk.initials}
+                          </div>
+                          <span className="font-bold text-gray-900">{clerk.name}</span>
                         </div>
-                        <span className="font-bold text-gray-900">{clerk.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 font-bold text-xs">
-                        {clerk.notifications}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 font-bold text-xs">
-                        {clerk.executions}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="font-black text-[#003366] inline-block" dir="ltr">{clerk.amount}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 font-bold text-xs">
-                        {clerk.coercion}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-700 font-bold">
-                      {clerk.reports}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2.5 py-1 rounded-md bg-red-50 text-red-700 font-bold text-xs">
-                        {clerk.cancellations}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-700 font-medium">
-                      {clerk.directed}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 font-bold text-xs">
+                          {clerk.notifications}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 font-bold text-xs">
+                          {clerk.executions}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="font-black text-[#003366] inline-block" dir="ltr">{clerk.amount}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 font-bold text-xs">
+                          {clerk.coercion}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-gray-700 font-bold">
+                        {clerk.reports}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2.5 py-1 rounded-md bg-red-50 text-red-700 font-bold text-xs">
+                          {clerk.cancellations}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-gray-700 font-medium">
+                        {clerk.directed}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="8" className="px-6 py-12 text-center text-gray-500 font-medium">
+                      لا توجد بيانات متاحة لهذا الشهر
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>

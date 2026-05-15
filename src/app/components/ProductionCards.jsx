@@ -194,12 +194,15 @@ export function ProductionCards() {
     }
   };
 
+  
+
   const inputClassName = "w-full p-3.5 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent bg-gray-50 transition-all text-[#003366] placeholder-gray-500 text-right";
   const labelClassName = "block text-sm font-semibold text-gray-700 mb-2 text-right";
 
   if (isLoadingHierarchy) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="w-10 h-10 animate-spin text-[#003366]" /></div>;
   }
+
 
   return (
     <div className="bg-transparent max-w-5xl mx-auto mt-6" dir="rtl">
