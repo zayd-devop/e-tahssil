@@ -54,7 +54,7 @@ export function FraisLiquidationTable() {
   const fetchStats = async (year) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/frais-stats?year=${year}`, {
+      const response = await fetch(`/api/frais-stats?year=${year}`, {
         headers: { 
           'Accept': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`,

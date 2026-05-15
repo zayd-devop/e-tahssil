@@ -38,7 +38,7 @@ export default function HearingMinutesModule() {
   const fetchData = async () => {
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const response = await fetch('http://127.0.0.1:8000/api/hearing-minutes', {
+      const response = await fetch('/api/hearing-minutes', {
         method: 'GET',
         headers: { 
             'Authorization': `Bearer ${token}`,
@@ -90,7 +90,7 @@ export default function HearingMinutesModule() {
 
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const response = await fetch('http://127.0.0.1:8000/api/hearing-minutes/import', {
+      const response = await fetch('/api/hearing-minutes/import', {
         method: 'POST',
         headers: { 
             'Authorization': `Bearer ${token}`,
@@ -124,7 +124,7 @@ export default function HearingMinutesModule() {
     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     
     // On passe le nom du greffier dans l'URL pour une requête GET
-    const url = `http://127.0.0.1:8000/api/hearing-minutes/print/${id}?clerk_name=${encodeURIComponent(clerkName)}`;
+    const url = `/api/hearing-minutes/print/${id}?clerk_name=${encodeURIComponent(clerkName)}`;
 
     try {
         Swal.fire({ 
@@ -171,7 +171,7 @@ export default function HearingMinutesModule() {
       });
 
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const response = await fetch('http://127.0.0.1:8000/api/hearing-minutes/print-merged', {
+      const response = await fetch('/api/hearing-minutes/print-merged', {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${token}`,

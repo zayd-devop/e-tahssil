@@ -86,7 +86,7 @@ export function FraisStatsForm() {
       // Assure-toi d'utiliser le bon nom de clé pour ton token ('token' ou 'auth_token')
       const token = sessionStorage.getItem('token'); 
 
-      const response = await fetch('http://127.0.0.1:8000/api/frais-stats', {
+      const response = await fetch('/api/frais-stats', {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
