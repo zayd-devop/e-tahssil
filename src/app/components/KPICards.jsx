@@ -25,7 +25,7 @@ import {
 import Swal from 'sweetalert2';
 
 // Remplace par l'URL de ton backend si nécessaire
-const API_URL = 'http://192.168.11.116:8000/api'; 
+const API_URL = 'http://10.60.26.80:8000/api'; 
 
 export function KPICards() {
   const [activeFilter, setActiveFilter] = useState('notifications');

@@ -8,7 +8,7 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
   const [formData, setFormData] = useState({ identifier: '', password: '', rememberMe: false });
 
   // رابط الـ API (تأكد من أنه يطابق مسار مشروع Laravel)
-  const API_URL = 'http://192.168.11.116:8000/api';
+  const API_URL = 'http://10.60.26.80:8000/api';
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;

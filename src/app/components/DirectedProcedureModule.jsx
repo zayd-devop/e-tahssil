@@ -49,7 +49,7 @@ export function DirectedProcedureModule({ onLogout }) {
   });
 
   const fileInputRef = useRef(null);
-  const API_URL = 'http://192.168.11.116:8000/api/procedures';
+  const API_URL = 'http://10.60.26.80:8000/api/procedures';
 
   const getToken = () => sessionStorage.getItem('token');
 

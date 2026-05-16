@@ -49,7 +49,7 @@ export default function CorrespondencesModule() {
     
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const response = await fetch('http://192.168.11.116:8000/api/correspondences/archive', {
+      const response = await fetch('http://10.60.26.80:8000/api/correspondences/archive', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json'
@@ -134,7 +134,7 @@ export default function CorrespondencesModule() {
       };
 
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const response = await fetch('http://192.168.11.116:8000/api/generate-dispatch', {
+      const response = await fetch('http://10.60.26.80:8000/api/generate-dispatch', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

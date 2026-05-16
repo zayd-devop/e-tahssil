@@ -41,7 +41,7 @@ export function OutstandingDebtsModule() {
       setIsLoading(true);
       
       // 🔥 L'URL est maintenant dynamique !
-      const url = `http://192.168.11.116:8000/api/${getApiEndpoint()}?year=${selectedYear}`;
+      const url = `http://10.60.26.80:8000/api/${getApiEndpoint()}?year=${selectedYear}`;
       
       const response = await fetch(url, {
         method: 'GET',
@@ -101,7 +101,7 @@ export function OutstandingDebtsModule() {
 
     try {
       // 🔥 L'URL d'importation est aussi dynamique !
-      const url = `http://192.168.11.116:8000/api/${getApiEndpoint()}/import`;
+      const url = `http://10.60.26.80:8000/api/${getApiEndpoint()}/import`;
 
       const response = await fetch(url, {
         method: 'POST',
