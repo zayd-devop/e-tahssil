@@ -26,7 +26,7 @@ export default function App() {
       
       if (token) {
         // إرسال طلب للسيرفر لإبطال (Revoke) التوكن
-        await fetch('/api/logout', {
+        await fetch('http://192.168.11.116:8000/api/logout', {
           method: 'POST',
           headers: {
             'Accept': 'application/json',

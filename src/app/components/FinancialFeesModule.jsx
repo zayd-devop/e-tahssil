@@ -19,7 +19,7 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
   const [printData, setPrintData] = useState({ execution_order_number: '', execution_order_date: '', debtor_name: '', debtor_address: '', formattedMainText: defaultMainText });
 
   const fileInputRef = useRef(null);
-  const API_URL = '/api/financial-fees';
+  const API_URL = 'http://192.168.11.116:8000/api/financial-fees';
   const getToken = () => sessionStorage.getItem('token') || localStorage.getItem('token');
 
   useEffect(() => {

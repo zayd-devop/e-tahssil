@@ -17,7 +17,7 @@ export function UserManagementModule() {
   const fetchUsers = async () => {
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const response = await fetch('/api/users', {
+      const response = await fetch('http://192.168.11.116:8000/api/users', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json'
@@ -51,7 +51,7 @@ export function UserManagementModule() {
 
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const response = await fetch('/api/users/import', {
+      const response = await fetch('http://192.168.11.116:8000/api/users/import', {
         method: 'POST',
         headers: { 
             'Authorization': `Bearer ${token}`,
@@ -88,7 +88,7 @@ export function UserManagementModule() {
     if (result.isConfirmed) {
       try {
         const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-        const response = await fetch(`/api/users/${id}`, {
+        const response = await fetch(`http://192.168.11.116:8000/api/users/${id}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -121,7 +121,7 @@ export function UserManagementModule() {
     if (result.isConfirmed) {
       try {
         const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-        const response = await fetch(`/api/users/${id}/reset-password`, {
+        const response = await fetch(`http://192.168.11.116:8000/api/users/${id}/reset-password`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
         });

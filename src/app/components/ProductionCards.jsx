@@ -89,7 +89,7 @@ export function ProductionCards() {
   useEffect(() => {
     const fetchHierarchy = async () => {
       try {
-        const response = await fetch('/api/sections-hierarchy', {
+        const response = await fetch('http://192.168.11.116:8000/api/sections-hierarchy', {
           headers: { 'Authorization': `Bearer ${getToken()}`, 'Accept': 'application/json' }
         });
         if (response.ok) {
@@ -155,7 +155,7 @@ export function ProductionCards() {
     });
 
     try {
-      const response = await fetch('/api/production-cards', {
+      const response = await fetch('http://192.168.11.116:8000/api/production-cards', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

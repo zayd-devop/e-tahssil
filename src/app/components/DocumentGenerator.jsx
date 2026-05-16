@@ -292,7 +292,7 @@ export function DocumentGenerator() {
     };
 
     try {
-      const response = await fetch('/api/generate-document', {
+      const response = await fetch('http://192.168.11.116:8000/api/generate-document', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -379,7 +379,7 @@ a.download = `${docName}_${safeDossierNum}.docx`;
           const token = sessionStorage.getItem('token'); 
 
           // 2. On ajoute les Headers à la requête fetch
-          const response = await fetch(`/api/folders?page=${currentPage}`, {
+          const response = await fetch(`http://192.168.11.116:8000/api/folders?page=${currentPage}`, {
             method: 'GET',
             headers: {
               'Accept': 'application/json',        // 👈 Empêche l'erreur "Route login not defined"
