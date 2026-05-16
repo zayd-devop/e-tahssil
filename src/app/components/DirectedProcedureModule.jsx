@@ -15,13 +15,13 @@ export function DirectedProcedureModule({ onLogout }) {
   // --- نظام الأرشيف (Archive System) ---
   const [isArchiveView, setIsArchiveView] = useState(false);
   const [archivedIds, setArchivedIds] = useState(() => {
-    const saved = localStorage.getItem('archivedProcedureIds');
+    const saved = sessionStorage.getItem('archivedProcedureIds');
     return saved ? JSON.parse(saved) : [];
   });
 
   // حفظ الأرشيف في المتصفح حتى لا يضيع عند التحديث
   useEffect(() => {
-    localStorage.setItem('archivedProcedureIds', JSON.stringify(archivedIds));
+    sessionStorage.setItem('archivedProcedureIds', JSON.stringify(archivedIds));
   }, [archivedIds]);
 
   // --- حالة التحديد للطباعة المجمعة ---
