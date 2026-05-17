@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FileSpreadsheet, Trash2, Search, User, Shield, ShieldAlert, CheckCircle2, XCircle, Key, Loader2 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
+// 🔥 1. IMPORT D'AXIOS
+import api from '../api/axios'; 
+
 export function UserManagementModule() {
   const [users, setUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -9,24 +12,19 @@ export function UserManagementModule() {
 
   const fileInputRef = useRef(null);
 
-  // جلب الموظفين عند تحميل الصفحة
   useEffect(() => {
     fetchUsers();
   }, []);
 
+  // 🔥 2. CORRECTION : GET avec Axios
   const fetchUsers = async () => {
     try {
-      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const response = await fetch('http://127.0.0.1:8000/api/users', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
-      if (response.ok) {
-        const res = await response.json();
-        setUsers(res.data);
-      }
+      setIsLoading(true);
+      // Axios gère l'URL de base et le Token
+      const response = await api.get('/users');
+      
+      // Axios parse le JSON, on accède directement à response.data.data (selon la structure de ton backend)
+      setUsers(response.data.data || response.data);
     } catch (error) {
       console.error("Erreur lors du chargement des utilisateurs:", error);
     } finally {
@@ -34,7 +32,7 @@ export function UserManagementModule() {
     }
   };
 
-  // استيراد لائحة الموظفين من Excel
+  // 🔥 3. CORRECTION : POST avec FormData (Import)
   const handleFileUpload = async (e) => {
     e.preventDefault();
     let file = e.target.files?.[0];
@@ -50,29 +48,21 @@ export function UserManagementModule() {
     });
 
     try {
-      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const response = await fetch('http://127.0.0.1:8000/api/users/import', {
-        method: 'POST',
-        headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json'
-        },
-        body: formData
-      });
+      const response = await api.post('/users/import', formData);
 
-      const responseData = await response.json();
-      if (!response.ok) throw new Error(responseData.message);
-
-      setUsers(responseData.data);
+      // On met à jour la liste avec les nouvelles données renvoyées par le serveur
+      setUsers(response.data.data || response.data);
       Swal.fire({ icon: 'success', title: 'تم استيراد الموظفين بنجاح', timer: 2000, showConfirmButton: false });
+      
     } catch (error) {
-      Swal.fire({ icon: 'error', title: 'فشل الاستيراد', text: error.message });
+      const errorMessage = error.response?.data?.message || 'فشل الاستيراد';
+      Swal.fire({ icon: 'error', title: 'فشل الاستيراد', text: errorMessage });
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  // حذف موظف
+  // 🔥 4. CORRECTION : DELETE avec Axios
   const handleDelete = async (id, name) => {
     const result = await Swal.fire({
       title: 'هل أنت متأكد؟',
@@ -87,25 +77,19 @@ export function UserManagementModule() {
 
     if (result.isConfirmed) {
       try {
-        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-        const response = await fetch(`http://127.0.0.1:8000/api/users/${id}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        await api.delete(`/users/${id}`);
 
-        if (response.ok) {
-          setUsers(users.filter(user => user.id !== id));
-          Swal.fire('تم الحذف!', 'تم حذف الحساب بنجاح.', 'success');
-        } else {
-          throw new Error('فشل الحذف');
-        }
+        // Mise à jour de l'état local sans recharger la page
+        setUsers(users.filter(user => user.id !== id));
+        Swal.fire('تم الحذف!', 'تم حذف الحساب بنجاح.', 'success');
+        
       } catch (error) {
         Swal.fire('خطأ', 'حدث خطأ أثناء الحذف', 'error');
       }
     }
   };
 
-  // إعادة تعيين كلمة السر
+  // 🔥 5. CORRECTION : POST avec Axios
   const handleResetPassword = async (id, name) => {
     const result = await Swal.fire({
       title: 'إعادة تعيين كلمة السر؟',
@@ -120,23 +104,16 @@ export function UserManagementModule() {
 
     if (result.isConfirmed) {
       try {
-        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-        const response = await fetch(`http://127.0.0.1:8000/api/users/${id}/reset-password`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
-        });
+        const response = await api.post(`/users/${id}/reset-password`);
 
-        const data = await response.json();
-        if (response.ok) {
-          Swal.fire({
-            icon: 'success',
-            title: 'تم إعادة التعيين!',
-            html: `كلمة السر الجديدة هي:<br><b style="font-size: 20px; color: #D4AF37;">${data.new_password}</b>`,
-            confirmButtonColor: '#003366'
-          });
-        } else {
-          throw new Error();
-        }
+        Swal.fire({
+          icon: 'success',
+          title: 'تم إعادة التعيين!',
+          // On récupère le nouveau mot de passe directement depuis response.data
+          html: `كلمة السر الجديدة هي:<br><b style="font-size: 20px; color: #D4AF37;">${response.data.new_password}</b>`,
+          confirmButtonColor: '#003366'
+        });
+        
       } catch (error) {
         Swal.fire('خطأ', 'حدث خطأ أثناء العملية', 'error');
       }
@@ -148,10 +125,15 @@ export function UserManagementModule() {
     return `${first.charAt(0)} ${last.charAt(0)}`;
   };
 
-  // تصفية الموظفين حسب البحث
+  // 🔥 6. SÉCURITÉ FRONT-END : Masquer le rôle "writer"
   const filteredUsers = users.filter(user => {
+    // 🛑 On s'assure de ne JAMAIS afficher les "writers"
+    const userRole = user.roleType || user.role_type;
+    if (userRole === 'writer') return false;
+
+    // Filtre de recherche classique
     const query = searchQuery.toLowerCase();
-    const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
+    const fullName = `${user.firstName || user.first_name} ${user.lastName || user.last_name}`.toLowerCase();
     return fullName.includes(query) || user.email.toLowerCase().includes(query);
   });
 
@@ -297,7 +279,6 @@ export function UserManagementModule() {
             </table>
           </div>
           
-          {/* Pagination simplifiée */}
           <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
             <span className="text-sm text-gray-500">عرض {filteredUsers.length} من أصل {filteredUsers.length} سجلات</span>
           </div>

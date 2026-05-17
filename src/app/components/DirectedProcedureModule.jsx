@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Upload, FileSpreadsheet, Pencil, Printer, FileText, CheckCircle2, Search, X, Plus, MapPin, Filter, Download, Loader2, LogOut, ChevronRight, ChevronLeft, Archive, RotateCcw, Trash2 } from 'lucide-react';
 import Swal from 'sweetalert2';
+import api from '../api/axios'; 
 
 export function DirectedProcedureModule({ onLogout }) {
   const [data, setData] = useState([]);
@@ -49,9 +50,7 @@ export function DirectedProcedureModule({ onLogout }) {
   });
 
   const fileInputRef = useRef(null);
-  const API_URL = 'http://127.0.0.1:8000/api/procedures';
-
-  const getToken = () => sessionStorage.getItem('token');
+  const API_URL = '/procedures'; // 👈 Simplifié car baseURL de Axios gère déjà '/api'
 
   useEffect(() => {
     fetchData();
@@ -61,25 +60,17 @@ export function DirectedProcedureModule({ onLogout }) {
     setCurrentPage(1);
   }, [searchQuery, selectedRole, data, isArchiveView]);
 
+  // 🔥 1. CORRECTION ICI : 100% AXIOS
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(API_URL, {
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${getToken()}`
-        }
-      });
+      const response = await api.get(API_URL);
       
-      if (response.status === 401) {
-        if (onLogout) onLogout();
-        return;
-      }
-
-      const result = await response.json();
-      setData(result);
+      // Axios place directement les données JSON dans response.data
+      setData(response.data);
     } catch (error) {
       console.error('Erreur de chargement:', error);
+      // L'intercepteur Axios gère déjà l'erreur 401 (déconnexion)
       Swal.fire({ icon: 'error', title: 'خطأ في الاتصال', text: 'تعذر تحميل البيانات من الخادم', confirmButtonColor: '#003366' });
     } finally {
       setIsLoading(false);
@@ -143,6 +134,7 @@ export function DirectedProcedureModule({ onLogout }) {
     setEditingRow({ ...editingRow, combinedParties: newParties, currentEditIndex: 0 });
   };
 
+  // 🔥 2. CORRECTION ICI : AXIOS POUR LA MISE À JOUR (PUT)
   const handleSave = async () => {
     try {
       Swal.fire({ title: 'جاري الحفظ...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
@@ -171,22 +163,15 @@ export function DirectedProcedureModule({ onLogout }) {
       delete payload.combinedParties;
       delete payload.currentEditIndex;
 
-      const response = await fetch(`${API_URL}/${editingRow.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` },
-        body: JSON.stringify(payload)
-      });
+      await api.put(`${API_URL}/${editingRow.id}`, payload);
 
-      if (response.ok) {
-        setData(data.map(item => item.id === editingRow.id ? payload : item));
-        handleCloseModal();
-        Swal.fire({ icon: 'success', title: 'تم الحفظ!', confirmButtonColor: '#003366', timer: 2000 });
-      } else {
-        const errorData = await response.json();
-        Swal.fire({ icon: 'error', title: 'خطأ!', text: `حدث خطأ أثناء التعديل: ${errorData.message}`, confirmButtonColor: '#003366' });
-      }
+      setData(data.map(item => item.id === editingRow.id ? payload : item));
+      handleCloseModal();
+      Swal.fire({ icon: 'success', title: 'تم الحفظ!', confirmButtonColor: '#003366', timer: 2000 });
+      
     } catch (error) {
-      Swal.fire({ icon: 'error', title: 'خطأ في الاتصال!', confirmButtonColor: '#003366' });
+      const errorMessage = error.response?.data?.message || 'تعذر الاتصال بالخادم';
+      Swal.fire({ icon: 'error', title: 'خطأ!', text: `حدث خطأ أثناء التعديل: ${errorMessage}`, confirmButtonColor: '#003366' });
     }
   };
 
@@ -195,7 +180,7 @@ export function DirectedProcedureModule({ onLogout }) {
     setEditingRow(null);
   };
 
-  // --- الحذف من قاعدة البيانات ---
+  // 🔥 3. CORRECTION ICI : AXIOS POUR LA SUPPRESSION DE MASSE (POST/DELETE)
   const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return;
     const result = await Swal.fire({
@@ -212,23 +197,21 @@ export function DirectedProcedureModule({ onLogout }) {
     if (result.isConfirmed) {
       try {
         Swal.fire({ title: 'جاري الحذف...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        const response = await fetch(`${API_URL}/bulk-delete`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
-          body: JSON.stringify({ ids: selectedIds })
-        });
-        if (response.ok) {
-          fetchData();
-          setArchivedIds(prev => prev.filter(id => !selectedIds.includes(id))); // إزالة من الأرشيف أيضاً
-          setSelectedIds([]);
-          Swal.fire({ icon: 'success', title: 'تم الحذف', confirmButtonColor: '#003366', timer: 1500 });
-        }
+        
+        await api.post(`${API_URL}/bulk-delete`, { ids: selectedIds });
+        
+        fetchData();
+        setArchivedIds(prev => prev.filter(id => !selectedIds.includes(id))); // إزالة من الأرشيف أيضاً
+        setSelectedIds([]);
+        Swal.fire({ icon: 'success', title: 'تم الحذف', confirmButtonColor: '#003366', timer: 1500 });
+        
       } catch (error) {
         Swal.fire({ icon: 'error', title: 'خطأ في الاتصال', confirmButtonColor: '#003366' });
       }
     }
   };
 
+  // 🔥 4. CORRECTION ICI : AXIOS POUR L'UPLOAD EXCEL (FORMDATA)
   const handleExcelUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -239,22 +222,16 @@ export function DirectedProcedureModule({ onLogout }) {
     formData.append('file', file);
     
     try {
-      const response = await fetch(`${API_URL}/import`, {
-        method: 'POST',
-        body: formData,
-        headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` }
-      });
-      const responseData = await response.json();
-
-      if (response.ok) {
-        Swal.fire({ icon: 'success', title: 'تم الاستيراد بنجاح!', confirmButtonColor: '#003366' });
-        fetchData(); 
-        setSelectedIds([]);
-      } else {
-        Swal.fire({ icon: 'error', title: 'خطأ في الاستيراد', text: responseData.details || responseData.error || 'تأكد من هيكل ملف الإكسل', confirmButtonColor: '#003366' });
-      }
+      // Axios détecte automatiquement que c'est un FormData et ajuste les headers
+      await api.post(`${API_URL}/import`, formData);
+      
+      Swal.fire({ icon: 'success', title: 'تم الاستيراد بنجاح!', confirmButtonColor: '#003366' });
+      fetchData(); 
+      setSelectedIds([]);
+      
     } catch (error) {
-      Swal.fire({ icon: 'error', title: 'خطأ في الاتصال', confirmButtonColor: '#003366' });
+      const errorData = error.response?.data || {};
+      Swal.fire({ icon: 'error', title: 'خطأ في الاستيراد', text: errorData.details || errorData.error || 'تأكد من هيكل ملف الإكسل', confirmButtonColor: '#003366' });
     } finally {
       event.target.value = null;
     }
@@ -343,7 +320,7 @@ export function DirectedProcedureModule({ onLogout }) {
     const issueDate = today.toLocaleDateString('ar-MA', { year: 'numeric', month: 'long', day: 'numeric' });
 
     setPrintData({
-      id: row.id, // Garder l'ID pour l'archivage
+      id: row.id,
       documentType: 'يوجه',
       suspectName: defaultIndex === 'ALL' ? 'سيتم إعداد إشعارات لجميع المتهمين' : (partiesArray[defaultIndex] || partiesArray[0] || ''),
       address: defaultIndex === 'ALL' ? 'عناوين متعددة' : (addressesArray[defaultIndex] || row.address || ''),
@@ -416,7 +393,6 @@ export function DirectedProcedureModule({ onLogout }) {
       URL.revokeObjectURL(url);
       setIsPrintModalOpen(false);
       
-      // 🔥 Archivage automatique après impression
       if (!isArchiveView) {
         setArchivedIds(prev => [...new Set([...prev, printData.id])]);
       }
@@ -435,7 +411,6 @@ export function DirectedProcedureModule({ onLogout }) {
     if (selectedIds.length === 0) return;
 
     if (docType === 'إنذار') {
-        // Logique Backend pour les inndar (Si configurée)
         Swal.fire({ icon: 'info', title: 'ميزة قيد التطوير', text: 'يرجى إعداد خادم الإنذارات المجمعة', confirmButtonColor: '#003366' });
         return;
     }
@@ -498,21 +473,14 @@ export function DirectedProcedureModule({ onLogout }) {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      // 🔥 LA SOLUTION EST ICI : Appel API pour chaque ID sélectionné
+
+      // 🔥 5. CORRECTION ICI : AXIOS AVEC PROMISE.ALL
       try {
-        await Promise.all(selectedIds.map(id => 
-          fetch(`${API_URL}/print/${id}`, {
-            method: 'POST', // ou GET
-            headers: {
-              'Authorization': `Bearer ${getToken()}`,
-              'Accept': 'application/json'
-            }
-          })
-        ));
+        await Promise.all(selectedIds.map(id => api.post(`${API_URL}/print/${id}`)));
       } catch (apiError) {
         console.error("Erreur lors de l'enregistrement de l'impression groupée :", apiError);
       }
-      // 🔥 Archivage automatique après impression groupée
+
       if (!isArchiveView) {
         setArchivedIds(prev => [...new Set([...prev, ...selectedIds])]);
       }
@@ -524,7 +492,6 @@ export function DirectedProcedureModule({ onLogout }) {
     }
   };
 
-  // --- دوال الجداول والبحث مع فلتر الأرشيف ---
   const splitText = (text, separator = '\n') => {
     if (!text) return [];
     return text.split(separator).filter(item => item.trim() !== '');
@@ -542,12 +509,10 @@ export function DirectedProcedureModule({ onLogout }) {
   }, [data]);
 
   const filteredData = data.filter(row => {
-    // 1. فلتر الأرشيف
     const isArchived = archivedIds.includes(row.id);
     if (isArchiveView && !isArchived) return false;
     if (!isArchiveView && isArchived) return false;
 
-    // 2. فلتر البحث والصفة
     const query = searchQuery.toLowerCase();
     const fileNum = (row.fileNumber || row.file_number || '').toLowerCase();
     const matchSearch = !searchQuery || fileNum.includes(query) || (row.parties && row.parties.some(party => party.toLowerCase().includes(query)));
@@ -590,8 +555,6 @@ export function DirectedProcedureModule({ onLogout }) {
           </div>
           
           <div className="flex flex-wrap items-center gap-3">
-            
-            {/* زر التبديل بين الأرشيف والملفات النشطة */}
             <button 
               onClick={() => { setIsArchiveView(!isArchiveView); setSelectedIds([]); setCurrentPage(1); }}
               className={`flex items-center gap-2 px-5 py-3.5 rounded-xl font-bold transition-all shadow-sm border ${
@@ -604,11 +567,9 @@ export function DirectedProcedureModule({ onLogout }) {
               <span>{isArchiveView ? 'الرجوع للملفات النشطة' : 'عرض الأرشيف'}</span>
             </button>
 
-            {/* أزرار الإجراءات على العناصر المحددة */}
             {selectedIds.length > 0 && (
               <>
                 {isArchiveView ? (
-                  // إجراءات داخل الأرشيف
                   <>
                     <button onClick={handleUnarchiveSelected} className="flex items-center gap-2 px-5 py-3.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-md">
                       <RotateCcw className="w-5 h-5" />
@@ -620,7 +581,6 @@ export function DirectedProcedureModule({ onLogout }) {
                     </button>
                   </>
                 ) : (
-                  // إجراءات داخل الملفات النشطة
                   <>
                     <button onClick={() => handleBulkPrint('إشعار')} className="flex items-center gap-2 px-5 py-3.5 bg-blue-600 text-white rounded-xl font-bold transition-all hover:bg-blue-700 shadow-lg">
                       <Printer className="w-5 h-5" />
@@ -631,7 +591,6 @@ export function DirectedProcedureModule({ onLogout }) {
               </>
             )}
 
-            {/* الاستيراد متاح فقط في الملفات النشطة */}
             {!isArchiveView && (
               <>
                 <input type="file" accept=".xlsx, .xls, .csv" ref={fileInputRef} onChange={handleExcelUpload} className="hidden" />

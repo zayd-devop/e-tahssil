@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { LoginPage } from './components/LoginPage';
 import { Dashboard } from './components/Dashboard';
 
+// 🔥 1. On importe notre instance Axios configurée
+import api from './api/axios'; 
+
 export default function App() {
   // 1. التحقق من وجود التوكن (Token) بدلاً من 'app_current_page'
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -25,14 +28,8 @@ export default function App() {
       const token = sessionStorage.getItem('token');
       
       if (token) {
-        // إرسال طلب للسيرفر لإبطال (Revoke) التوكن
-        await fetch('http://127.0.0.1:8000/api/logout', {
-          method: 'POST',
-          headers: {
-            'Accept': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        // 🔥 2. C'est magique ! Juste une ligne. Axios s'occupe de l'URL de base et du Token
+        await api.post('/logout');
       }
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error);
@@ -40,8 +37,7 @@ export default function App() {
       // مسح جميع بيانات الجلسة من المتصفح (حتى لو فشل الاتصال بالسيرفر)
       sessionStorage.removeItem('token');
       sessionStorage.removeItem('user');
-      sessionStorage.removeItem('app_user_role'); // اختياري إذا أردت مسح الرول أيضاً
-      // sessionStorage.removeItem('app_user_role'); // اختياري إذا أردت مسح الرول أيضاً
+      sessionStorage.removeItem('app_user_role');
       
       // إرجاع المستخدم لصفحة الدخول
       setIsAuthenticated(false);

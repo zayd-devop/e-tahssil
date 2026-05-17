@@ -11,16 +11,16 @@ import {
   ChevronLeft,
   Calendar,
   FileText,
-  UserPen // Ajout d'une petite icône pour le greffier
+  UserPen 
 } from 'lucide-react';
 import Swal from 'sweetalert2';
+import api from '../api/axios'; 
 
 export default function HearingMinutesModule() {
   const [tableData, setTableData] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState(''); 
   
-  // NOUVEAU : State pour le nom du greffier
   const [clerkName, setClerkName] = useState(''); 
   
   const [isLoading, setIsLoading] = useState(true);
@@ -35,21 +35,15 @@ export default function HearingMinutesModule() {
     fetchData();
   }, []);
 
+  // 🔥 CORRECTION 1 : GET simple avec Axios
   const fetchData = async () => {
     try {
-      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const response = await fetch('http://127.0.0.1:8000/api/hearing-minutes', {
-        method: 'GET',
-        headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const res = await response.json();
-        setTableData(res.data);
-      }
+      setIsLoading(true);
+      // Plus besoin de '/api/' ni de gérer le token
+      const response = await api.get('/hearing-minutes');
+      
+      // Axios met le JSON dans response.data
+      setTableData(response.data.data);
     } catch (error) {
       console.error("Erreur lors du chargement des données:", error);
     } finally {
@@ -63,6 +57,7 @@ export default function HearingMinutesModule() {
     return `${day}/${month}/${year}`;
   };
 
+  // 🔥 CORRECTION 2 : POST avec FormData
   const handleFileUpload = async (e) => {
     e.preventDefault();
     let file = e.target.files?.[0];
@@ -89,42 +84,28 @@ export default function HearingMinutesModule() {
     });
 
     try {
-      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const response = await fetch('http://127.0.0.1:8000/api/hearing-minutes/import', {
-        method: 'POST',
-        headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json'
-        },
-        body: formData
-      });
+      // Axios configure tout seul les headers pour FormData
+      const response = await api.post('/hearing-minutes/import', formData);
 
-      const responseData = await response.json();
-      if (!response.ok) throw new Error(responseData.message);
-
-      setTableData(responseData.data);
+      setTableData(response.data.data);
       setCurrentPage(1); 
       setSelectedIds([]); 
       Swal.fire({ icon: 'success', title: 'تم استيراد البيانات بنجاح', timer: 2000, showConfirmButton: false });
 
     } catch (error) {
-      Swal.fire({ icon: 'error', title: 'فشل الاستيراد', text: error.message });
+      const errorMessage = error.response?.data?.message || 'فشل الاستيراد';
+      Swal.fire({ icon: 'error', title: 'فشل الاستيراد', text: errorMessage });
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
+  // 🔥 CORRECTION 3 : GET Blob pour un fichier Word unique
   const handlePrintSingle = async (id, fileNumber) => {
-    // Vérification : Exiger le nom du greffier avant d'imprimer
     if (!clerkName.trim()) {
         Swal.fire({ icon: 'warning', title: 'تنبيه', text: 'المرجو إدخال اسم كاتب الضبط أولاً فوق الجدول', confirmButtonColor: '#003366' });
         return;
     }
-
-    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-    
-    // On passe le nom du greffier dans l'URL pour une requête GET
-    const url = `http://127.0.0.1:8000/api/hearing-minutes/print/${id}?clerk_name=${encodeURIComponent(clerkName)}`;
 
     try {
         Swal.fire({ 
@@ -133,13 +114,12 @@ export default function HearingMinutesModule() {
             allowOutsideClick: false 
         });
 
-        const response = await fetch(url, {
-            headers: { 'Authorization': `Bearer ${token}` }
+        const response = await api.get(`/hearing-minutes/print/${id}?clerk_name=${encodeURIComponent(clerkName)}`, {
+            responseType: 'blob' // 👈 Indispensable pour un fichier
         });
 
-        if (!response.ok) throw new Error();
-
-        const blob = await response.blob();
+        // Le fichier est directement dans response.data
+        const blob = response.data;
         const downloadUrl = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = downloadUrl;
@@ -147,6 +127,7 @@ export default function HearingMinutesModule() {
         document.body.appendChild(link);
         link.click();
         link.remove();
+        window.URL.revokeObjectURL(downloadUrl);
         
         Swal.close();
     } catch (error) {
@@ -154,10 +135,10 @@ export default function HearingMinutesModule() {
     }
   };
 
+  // 🔥 CORRECTION 4 : POST Blob pour le publipostage (Code nettoyé)
   const handleMergedPrint = async () => {
     if (selectedIds.length === 0) return;
 
-    // Vérification : Exiger le nom du greffier avant l'impression groupée
     if (!clerkName.trim()) {
         Swal.fire({ icon: 'warning', title: 'تنبيه', text: 'المرجو إدخال اسم كاتب الضبط أولاً فوق الجدول', confirmButtonColor: '#003366' });
         return;
@@ -170,30 +151,25 @@ export default function HearingMinutesModule() {
         allowOutsideClick: false 
       });
 
-      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const response = await fetch('http://127.0.0.1:8000/api/hearing-minutes/print-merged', {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        // On envoie le nom du greffier dans le Body de la requête POST
-        body: JSON.stringify({ 
-            ids: selectedIds,
-            clerk_name: clerkName 
-        })
-      });
+      const response = await api.post('/hearing-minutes/print-merged', 
+        { 
+          ids: selectedIds,
+          clerk_name: clerkName 
+        }, 
+        {
+          responseType: 'blob' // 👈 Indispensable
+        }
+      );
 
-      if (!response.ok) throw new Error();
-
-      const blob = await response.blob();
+      const blob = response.data;
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Publipostage_PV_${new Date().toISOString().slice(0, 10)}.docx`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Publipostage_PV_${new Date().toISOString().slice(0, 10)}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
       
       setSelectedIds([]); 
       Swal.close();

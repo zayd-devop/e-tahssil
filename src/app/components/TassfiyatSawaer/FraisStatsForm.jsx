@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, Calendar, BarChart3, FileText, Scale, FileSpreadsheet, Calculator, ScrollText, Loader2, CheckCircle2, AlertCircle, ChevronDown } from 'lucide-react';
-import Swal from 'sweetalert2'; // 👈 Import de SweetAlert2
+import { Save, Calendar, BarChart3, FileText, Scale, FileSpreadsheet, Calculator, ScrollText, Loader2, ChevronDown } from 'lucide-react';
+import Swal from 'sweetalert2'; 
+import api from '../../api/axios';
 
 export function FraisStatsForm() {
   const [formData, setFormData] = useState({
@@ -24,15 +25,13 @@ export function FraisStatsForm() {
   });
 
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState({ text: '', type: '' });
+  
   // États pour le sélecteur d'année personnalisé
   const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Générer une liste d'années
   const availableYears = Array.from({ length: 27 }, (_, i) => (2026 - i).toString());
 
-  // Fermer le menu déroulant si on clique en dehors
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -43,7 +42,6 @@ export function FraisStatsForm() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Textes en arabe uniquement
   const t = {
     pageTitle: 'إدخال الإحصائيات الشهرية',
     pageSubtitle: 'لوحة إدخال البيانات المجمعة لوحدة تصفية الصوائر',
@@ -75,41 +73,22 @@ export function FraisStatsForm() {
   const handleYearSelect = (year) => {
     setFormData(prev => ({ ...prev, year: year }));
     setIsYearDropdownOpen(false);
-    if (message.text) setMessage({ text: '', type: '' });
   };
 
+  // 🔥 LA CORRECTION EST ICI : 100% AXIOS
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Assure-toi d'utiliser le bon nom de clé pour ton token ('token' ou 'auth_token')
-      const token = sessionStorage.getItem('token'); 
+      // Plus besoin de récupérer le token manuellement
+      // Axios lance la requête, transforme formData en JSON, et place la réponse dans response.data
+      const response = await api.post('/frais-stats', formData);
 
-      const response = await fetch('http://127.0.0.1:8000/api/frais-stats', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          // 👇 LA LIGNE MAGIQUE QUI MANQUAIT 👇
-          'Content-Type': 'application/json', 
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(formData)
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        // On récupère les erreurs de validation Laravel s'il y en a
-        const errorMessage = data.message || 'حدث خطأ أثناء حفظ البيانات';
-        throw new Error(errorMessage);
-      }
-
-      // 🌟 SweetAlert pour le Succès
       Swal.fire({
         icon: 'success',
         title: 'نجاح!',
-        text: data.message || 'تم حفظ الإحصائيات بنجاح',
+        text: response.data.message || 'تم حفظ الإحصائيات بنجاح',
         confirmButtonText: 'حسناً',
         confirmButtonColor: '#003366', 
         customClass: {
@@ -119,11 +98,13 @@ export function FraisStatsForm() {
       });
       
     } catch (error) {
-      // 🚨 SweetAlert pour l'Erreur
+      // Avec Axios, on attrape les erreurs de validation Laravel comme ceci :
+      const errorMessage = error.response?.data?.message || error.message || 'حدث خطأ أثناء حفظ البيانات';
+
       Swal.fire({
         icon: 'error',
         title: 'خطأ!',
-        text: error.message,
+        text: errorMessage,
         confirmButtonText: 'إغلاق',
         confirmButtonColor: '#ef4444', 
         customClass: {
@@ -184,7 +165,6 @@ export function FraisStatsForm() {
 
   return (
     <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden font-sans" dir="rtl">
-      {/* Header */}
       <div className="bg-[#F8F9FA] px-6 py-6 border-b border-gray-200 flex items-center gap-4">
         <div className="w-14 h-14 bg-[#003366] rounded-xl shadow-md flex items-center justify-center border border-[#D4AF37]/30">
           <BarChart3 className="w-7 h-7 text-[#D4AF37]" />
@@ -197,7 +177,6 @@ export function FraisStatsForm() {
 
       <form onSubmit={handleSubmit} className="p-6 space-y-8">
         
-        {/* Top Section: Period Selection */}
         <div className="bg-blue-50/50 rounded-xl p-5 border border-blue-100">
           <div className="flex items-center gap-2 mb-4 text-[#003366]">
             <Calendar className="w-5 h-5" />
@@ -217,7 +196,7 @@ export function FraisStatsForm() {
               <label className={labelClassName}>{t.year}</label>
               <div className="relative" ref={dropdownRef}>
                 <button
-                  type="button" // Important pour ne pas soumettre le formulaire
+                  type="button" 
                   onClick={() => !isLoading && setIsYearDropdownOpen(!isYearDropdownOpen)}
                   disabled={isLoading}
                   className={`${inputClassName} flex items-center justify-between cursor-pointer ${
@@ -242,8 +221,8 @@ export function FraisStatsForm() {
                           onClick={() => handleYearSelect(year)}
                           className={`w-full text-right px-4 py-2.5 transition-colors text-sm font-semibold border-b border-gray-50 last:border-none ${
                             formData.year === year
-                              ? 'bg-[#003366] text-white' // 👈 L'année sélectionnée (Fond bleu foncé)
-                                : 'text-gray-700 hover:bg-blue-100 hover:text-[#003366]' // 👈 Le survol (Fond bleu clair + texte bleu foncé)
+                              ? 'bg-[#003366] text-white' 
+                              : 'text-gray-700 hover:bg-blue-100 hover:text-[#003366]' 
                           }`}
                         >
                           {year}
@@ -257,7 +236,6 @@ export function FraisStatsForm() {
           </div>
         </div>
 
-        {/* Main Form Area: 2 Columns Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           <div className="flex flex-col gap-6">
             {renderCard(t.card1Title, <FileText className="w-5 h-5" />, 'extraits')}
@@ -270,7 +248,6 @@ export function FraisStatsForm() {
           </div>
         </div>
 
-        {/* Bottom Action */}
         <div className="pt-6 border-t border-gray-100 flex justify-end">
           <button
             type="submit"

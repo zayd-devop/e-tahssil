@@ -24,8 +24,8 @@ import {
 } from 'recharts';
 import Swal from 'sweetalert2';
 
-// Remplace par l'URL de ton backend si nécessaire
-const API_URL = 'http://127.0.0.1:8000/api'; 
+// 🔥 1. IMPORT D'AXIOS
+import api from '../api/axios'; 
 
 export function KPICards() {
   const [activeFilter, setActiveFilter] = useState('notifications');
@@ -57,35 +57,22 @@ export function KPICards() {
     { id: 10, name: 'أكتوبر' }, { id: 11, name: 'نونبر' }, { id: 12, name: 'دجنبر' }
   ];
 
-  // Appel API au chargement du composant
+  // 🔥 CORRECTION 2: GET simple des stats avec AXIOS et params
   useEffect(() => {
     const fetchDashboardStats = async () => {
       try {
         setIsLoading(true);
-        const token = sessionStorage.getItem('token'); 
 
-        const queryParams = new URLSearchParams();
-        queryParams.append('year', selectedYear);
-        
+        // Préparation des paramètres pour Axios
+        const params = { year: selectedYear };
         if (selectedMonth !== 'ALL') {
-          queryParams.append('month', selectedMonth);
+          params.month = selectedMonth;
         }
 
-        const response = await fetch(`${API_URL}/dashboard-stats?${queryParams.toString()}`, {
-          method: 'GET',
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          }
-        });
+        // Requête GET propre
+        const response = await api.get('/dashboard-stats', { params });
+        setDashboardData(response.data);
 
-        if (!response.ok) {
-          throw new Error('فشل في تحميل بيانات لوحة القيادة'); 
-        }
-
-        const data = await response.json();
-        setDashboardData(data);
       } catch (err) {
         console.error(err);
         setError('حدث خطأ أثناء جلب البيانات. يرجى المحاولة لاحقاً.');
@@ -137,6 +124,7 @@ export function KPICards() {
 
   const currentChartData = productivityDataSets[activeFilter] || { data: [], average: 0, unit: '' };
 
+  // 🔥 CORRECTION 3: Export Excel en Blob avec AXIOS
   const handleExportExcel = async () => {
     try {
       Swal.fire({
@@ -145,25 +133,19 @@ export function KPICards() {
         allowOutsideClick: false
       });
 
-      const token = sessionStorage.getItem('token');
-      const queryParams = new URLSearchParams();
-      queryParams.append('year', selectedYear);
+      const params = { year: selectedYear };
       if (selectedMonth !== 'ALL') {
-        queryParams.append('month', selectedMonth);
+        params.month = selectedMonth;
       }
 
-      // طلب الملف من السيرفر
-      const response = await fetch(`${API_URL}/dashboard/export?${queryParams.toString()}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+      // Requête GET avec responseType: 'blob'
+      const response = await api.get('/dashboard/export', {
+        params,
+        responseType: 'blob'
       });
 
-      if (!response.ok) throw new Error('فشل التصدير');
-
-      // معالجة الملف المستلم كـ Blob للتحميل
-      const blob = await response.blob();
+      // Le fichier Blob est directement dans response.data
+      const blob = response.data;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -179,9 +161,7 @@ export function KPICards() {
       console.error(error);
       Swal.fire({ icon: 'error', title: 'خطأ', text: 'حدث مشكلة أثناء تصدير الملف' });
     }
-};
-
-  
+  };
 
   // --------------------------------------------------------
   // 4. Rendu Principal de la page

@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Save, Activity, Info, Mail, ShieldAlert, DollarSign, ChevronDown, X, Loader2 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
+// 🔥 1. IMPORT D'AXIOS
+import api from '../api/axios';
+
 export function ProductionCards() {
 
   // حالات جلب البيانات من الخادم
@@ -12,7 +15,7 @@ export function ProductionCards() {
     employeeName: '',
     section: '',
     registre: '',
-    todayDate: new Date().toISOString().split('T')[0], // التاريخ الافتراضي هو اليوم، لكنه الآن قابل للتعديل
+    todayDate: new Date().toISOString().split('T')[0], 
     selectedActions: [], 
     dossiersNotifies: '',
     dossiersExecutes: '',
@@ -41,7 +44,7 @@ export function ProductionCards() {
     successMsg: 'تم حفظ البطاقة بنجاح',
     
     card1Title: 'معلومات عامة',
-    dateLabel: 'تاريخ الإنجاز', // تم تعديل التسمية قليلاً لتناسب أي تاريخ
+    dateLabel: 'تاريخ الإنجاز', 
     sectionLabel: 'الشعبة',
 
     card2Title: 'العمل الإداري والتبليغ (الإجراءات المنجزة)',
@@ -66,8 +69,6 @@ export function ProductionCards() {
     contreSocietesLabel: 'ضد الشركات',
   };
 
-  const getToken = () => sessionStorage.getItem('token') || localStorage.getItem('token');
-
   // جلب معلومات المستخدم
   useEffect(() => {
     const userStorage = sessionStorage.getItem('user');
@@ -85,19 +86,18 @@ export function ProductionCards() {
     }
   }, []);
 
-  // --- جلب هيكلة الشُعب والإجراءات من الخادم ---
+  // --- 🔥 CORRECTION 2 : GET avec Axios ---
   useEffect(() => {
     const fetchHierarchy = async () => {
       try {
-        const response = await fetch('http://127.0.0.1:8000/api/sections-hierarchy', {
-          headers: { 'Authorization': `Bearer ${getToken()}`, 'Accept': 'application/json' }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setHierarchyData(data);
-          if (data.length > 0) {
-            setFormData(prev => ({ ...prev, section: data[0].name }));
-          }
+        const response = await api.get('/sections-hierarchy');
+        
+        // Axios place directement le tableau JSON dans response.data
+        const data = response.data;
+        setHierarchyData(data);
+        
+        if (data.length > 0) {
+          setFormData(prev => ({ ...prev, section: data[0].name }));
         }
       } catch (error) {
         console.error("Erreur de chargement des sections:", error);
@@ -144,6 +144,7 @@ export function ProductionCards() {
     });
   };
 
+  // --- 🔥 CORRECTION 3 : POST avec Axios ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -155,46 +156,41 @@ export function ProductionCards() {
     });
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/production-cards', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${getToken()}`
-        },
-        body: JSON.stringify(formData)
+      // Axios stringifie le formData automatiquement et inclut le token
+      await api.post('/production-cards', formData);
+
+      Swal.fire({
+        icon: 'success',
+        title: t.successMsg,
+        confirmButtonColor: '#003366',
+        timer: 2000
       });
 
-      if (response.ok) {
-        Swal.fire({
-          icon: 'success',
-          title: t.successMsg,
-          confirmButtonColor: '#003366',
-          timer: 2000
-        });
-
-        // مسح الحقول بعد الحفظ مع الاحتفاظ بالتاريخ المختار واسم الموظف
-        setFormData(prev => ({
-          ...prev, 
-          registre: '', selectedActions: [], dossiersNotifies: '',
-          dossiersExecutes: '', montantRecouvre: '', 
-          pvPositif: false, pvPositifCount: '', 
-          pvNegatif: false, pvNegatifCount: '', 
-          contrainte: '', dossiersAnnulation: '', dossiersIskatat: '',
-          montantDelegations: '', contrePersonnes: false, montantPersonnes: '', 
-          contreSocietes: false, montantSocietes: ''
-        }));
-        setCurrentCategory('');
-      } else {
-        const errorData = await response.json();
-        Swal.fire({ icon: 'error', title: 'خطأ', text: errorData.message || 'حدث خطأ أثناء الحفظ', confirmButtonColor: '#003366' });
-      }
+      // مسح الحقول بعد الحفظ مع الاحتفاظ بالتاريخ المختار واسم الموظف
+      setFormData(prev => ({
+        ...prev, 
+        registre: '', selectedActions: [], dossiersNotifies: '',
+        dossiersExecutes: '', montantRecouvre: '', 
+        pvPositif: false, pvPositifCount: '', 
+        pvNegatif: false, pvNegatifCount: '', 
+        contrainte: '', dossiersAnnulation: '', dossiersIskatat: '',
+        montantDelegations: '', contrePersonnes: false, montantPersonnes: '', 
+        contreSocietes: false, montantSocietes: ''
+      }));
+      setCurrentCategory('');
+      
     } catch (error) {
-      Swal.fire({ icon: 'error', title: 'خطأ في الاتصال', text: 'تعذر الاتصال بالخادم', confirmButtonColor: '#003366' });
+      // Récupération correcte du message d'erreur d'Axios
+      const errorMessage = error.response?.data?.message || 'حدث خطأ أثناء الحفظ';
+      
+      Swal.fire({ 
+        icon: 'error', 
+        title: 'خطأ', 
+        text: errorMessage, 
+        confirmButtonColor: '#003366' 
+      });
     }
   };
-
-  
 
   const inputClassName = "w-full p-3.5 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent bg-gray-50 transition-all text-[#003366] placeholder-gray-500 text-right";
   const labelClassName = "block text-sm font-semibold text-gray-700 mb-2 text-right";
@@ -202,7 +198,6 @@ export function ProductionCards() {
   if (isLoadingHierarchy) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="w-10 h-10 animate-spin text-[#003366]" /></div>;
   }
-
 
   return (
     <div className="bg-transparent max-w-5xl mx-auto mt-6" dir="rtl">
@@ -233,10 +228,8 @@ export function ProductionCards() {
               <h3 className="text-lg font-bold text-gray-800">{t.card1Title}</h3>
             </div>
             
-            {/* 🔥 MODIFICATION ICI : md:grid-cols-3 au lieu de md:grid-cols-2 */}
             <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-5">
               
-              {/* 🔥 La date prend 1 seule colonne */}
               <div className="md:col-span-1">
                 <label className={labelClassName}>{t.dateLabel}</label>
                 <input 
@@ -249,7 +242,6 @@ export function ProductionCards() {
                 />
               </div>
 
-              {/* 🔥 La section (شعبة) prend 2 colonnes pour avoir plus d'espace */}
               <div className="md:col-span-2">
                 <label className={labelClassName}>{t.sectionLabel}</label>
                 <select name="section" value={formData.section} onChange={handleChange} className={`${inputClassName} bg-white cursor-pointer`} required>
@@ -412,7 +404,6 @@ export function ProductionCards() {
                 </div>
               </div>
 
-            
             </div>
           </div>
         </div>

@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { User, Lock, Eye, EyeOff, Shield, Loader2 } from 'lucide-react'; // أضفنا Loader2
-import Swal from 'sweetalert2'; // استيراد SweetAlert للرسائل
+import { User, Lock, Eye, EyeOff, Shield, Loader2 } from 'lucide-react'; 
+import Swal from 'sweetalert2'; 
+
+// 🔥 1. IMPORT D'AXIOS
+import api from '../api/axios';
 
 export function LoginPage({ onLogin, role, onRoleChange }) {
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false); // حالة التحميل الجديدة
+  const [isLoading, setIsLoading] = useState(false); 
   const [formData, setFormData] = useState({ identifier: '', password: '', rememberMe: false });
-
-  // رابط الـ API (تأكد من أنه يطابق مسار مشروع Laravel)
-  const API_URL = 'http://127.0.0.1:8000/api';
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -18,63 +18,53 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
     }));
   };
 
+  // 🔥 2. CORRECTION : POST avec Axios
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          email: formData.identifier,
-          password: formData.password
-        })
+      // Axios gère l'URL de base, les headers et la conversion JSON automatiquement
+      const response = await api.post('/login', {
+        email: formData.identifier,
+        password: formData.password
       });
 
-      const data = await response.json();
+      // Les données sont directement dans response.data
+      const data = response.data;
 
-      if (response.ok) {
-        // 1. Sauvegarde des tokens et infos utilisateur
-        sessionStorage.setItem('token', data.access_token);
-        sessionStorage.setItem('user', JSON.stringify(data.user));
-        
-        // 🔥 2. LA CORRECTION EST ICI : 
-        // On récupère le vrai rôle depuis la base de données et on le sauvegarde !
-        const userRole = data.user.role;
-        sessionStorage.setItem('userRole', userRole); 
+      // 1. Sauvegarde des tokens et infos utilisateur
+      sessionStorage.setItem('token', data.access_token);
+      sessionStorage.setItem('user', JSON.stringify(data.user));
+      
+      // 2. On récupère le vrai rôle depuis la base de données et on le sauvegarde !
+      const userRole = data.user.role;
+      sessionStorage.setItem('userRole', userRole); 
 
-        // On informe le composant parent du rôle exact
-        onRoleChange(userRole); 
-        // ---------------------------------------------------------
-        
-        // 3. Notification de succès
-        Swal.fire({
-          icon: 'success',
-          title: 'مرحباً بك!',
-          text: 'تم تسجيل الدخول بنجاح',
-          timer: 1500,
-          showConfirmButton: false
-        });
+      // On informe le composant parent du rôle exact
+      onRoleChange(userRole); 
+      
+      // 3. Notification de succès
+      Swal.fire({
+        icon: 'success',
+        title: 'مرحباً بك!',
+        text: 'تم تسجيل الدخول بنجاح',
+        timer: 1500,
+        showConfirmButton: false
+      });
 
-        onLogin();
-      } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'فشل الدخول',
-          text: data.message || 'البريد الإلكتروني أو كلمة المرور غير صحيحة',
-          confirmButtonColor: '#003366'
-        });
-      }
+      onLogin();
+      
     } catch (error) {
       console.error('Login Error:', error);
+      
+      // 🔥 Axios stocke les messages d'erreur du serveur dans error.response.data
+      const errorMessage = error.response?.data?.message || 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
+      
       Swal.fire({
         icon: 'error',
-        title: 'خطأ في الاتصال',
-        text: 'تعذر الاتصال بالسيرفر',
+        title: 'فشل الدخول',
+        text: errorMessage,
         confirmButtonColor: '#003366'
       });
     } finally {
@@ -139,7 +129,7 @@ export function LoginPage({ onLogin, role, onRoleChange }) {
                       <User className="w-5 h-5 text-gray-400" />
                     </div>
                     <input
-                      type="email" // تم التغيير لـ email ليتوافق مع API
+                      type="email" 
                       name="identifier"
                       value={formData.identifier}
                       onChange={handleChange}

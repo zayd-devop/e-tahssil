@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, Trash2, X, Loader2, Coins, MapPin, Scale, ChevronRight, ChevronLeft, FileSpreadsheet, Printer, Download, Calendar } from 'lucide-react';
 import Swal from 'sweetalert2';
+import api from '../api/axios'; 
 
 export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
   const [data, setData] = useState([]);
@@ -13,14 +14,16 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
 
-  // النص الافتراضي الذي طلبته
   const defaultMainText = 'المطلوب منكم الحضور شخصيا إلى مقر هذه المحكمة في أقرب الآجال لأمر يهمكم والسلام .';
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [printData, setPrintData] = useState({ execution_order_number: '', execution_order_date: '', debtor_name: '', debtor_address: '', formattedMainText: defaultMainText });
 
   const fileInputRef = useRef(null);
-  const API_URL = 'http://127.0.0.1:8000/api/financial-fees';
-  const getToken = () => sessionStorage.getItem('token') || localStorage.getItem('token');
+  
+  // Plus besoin de /api car Axios le gère dans son baseURL
+  const API_URL = '/financial-fees';
+  
+  // 🔥 SUPPRESSION DE getToken() car Axios s'en occupe tout seul !
 
   useEffect(() => {
     fetchData();
@@ -29,16 +32,15 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
     setSelectedIds([]);
   }, [type, selectedYear]);
 
+  // 🔥 CORRECTION 1: GET (Liste)
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`${API_URL}/${type}?year=${selectedYear}`, {
-        headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` }
-      });
-      if (response.ok) {
-        const result = await response.json();
-        setData(result);
-      }
+      const response = await api.get(`${API_URL}/${type}?year=${selectedYear}`);
+      
+      // Axios parse le JSON tout seul dans response.data
+      setData(response.data);
+      
     } catch (error) {
       console.error('Erreur:', error);
       Swal.fire({ icon: 'error', title: 'خطأ', text: 'تعذر تحميل البيانات', confirmButtonColor: '#003366' });
@@ -73,7 +75,7 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
     }
   };
 
-  // --- دوال الحذف والاستيراد ---
+  // 🔥 CORRECTION 2: POST (Suppression Multiple)
   const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return;
     const result = await Swal.fire({
@@ -90,22 +92,19 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
     if (result.isConfirmed) {
       try {
         Swal.fire({ title: 'جاري الحذف...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        const response = await fetch(`${API_URL}/bulk-delete`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
-          body: JSON.stringify({ ids: selectedIds })
-        });
-        if (response.ok) {
-          fetchData();
-          setSelectedIds([]);
-          Swal.fire({ icon: 'success', title: 'تم الحذف', confirmButtonColor: '#003366', timer: 1500 });
-        }
+        
+        await api.post(`${API_URL}/bulk-delete`, { ids: selectedIds });
+        
+        fetchData();
+        setSelectedIds([]);
+        Swal.fire({ icon: 'success', title: 'تم الحذف', confirmButtonColor: '#003366', timer: 1500 });
       } catch (error) {
         Swal.fire({ icon: 'error', title: 'خطأ في الاتصال', confirmButtonColor: '#003366' });
       }
     }
   };
   
+  // 🔥 CORRECTION 3: DELETE (Suppression Individuelle)
   const handleDelete = async (id) => {
     const result = await Swal.fire({
       title: 'هل أنت متأكد؟',
@@ -121,21 +120,19 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
     if (result.isConfirmed) {
       try {
         Swal.fire({ title: 'جاري الحذف...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        const response = await fetch(`${API_URL}/${id}`, {
-          method: 'DELETE',
-          headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` }
-        });
-        if (response.ok) {
-          fetchData(); 
-          setSelectedIds(prev => prev.filter(selectedId => selectedId !== id)); 
-          Swal.fire({ icon: 'success', title: 'تم الحذف بنجاح', confirmButtonColor: '#003366', timer: 1500 });
-        }
+        
+        await api.delete(`${API_URL}/${id}`);
+        
+        fetchData(); 
+        setSelectedIds(prev => prev.filter(selectedId => selectedId !== id)); 
+        Swal.fire({ icon: 'success', title: 'تم الحذف بنجاح', confirmButtonColor: '#003366', timer: 1500 });
       } catch (error) {
         Swal.fire({ icon: 'error', title: 'خطأ في الاتصال', confirmButtonColor: '#003366' });
       }
     }
   };
 
+  // 🔥 CORRECTION 4: POST (Importation Excel avec FormData)
   const handleExcelUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -147,16 +144,11 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
     formData.append('type', type); 
     
     try {
-      const response = await fetch(`${API_URL}/import`, {
-        method: 'POST',
-        body: formData,
-        headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` }
-      });
-      if (response.ok) {
-        Swal.fire({ icon: 'success', title: 'تم الاستيراد بنجاح!', confirmButtonColor: '#003366' });
-        fetchData(); 
-        setSelectedIds([]);
-      }
+      await api.post(`${API_URL}/import`, formData);
+      
+      Swal.fire({ icon: 'success', title: 'تم الاستيراد بنجاح!', confirmButtonColor: '#003366' });
+      fetchData(); 
+      setSelectedIds([]);
     } catch (error) {
       Swal.fire({ icon: 'error', title: 'خطأ في الاتصال', confirmButtonColor: '#003366' });
     } finally {
@@ -164,9 +156,6 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
     }
   };
 
-  // ==========================================
-  // --- دالة تحميل الملفات الشاملة (لـ HTML ولـ Blob/Backend) ---
-  // ==========================================
   const downloadFile = (content, fileName, isBlob = false) => {
     let blob;
     if (!isBlob) {
@@ -201,9 +190,6 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
     URL.revokeObjectURL(url);
   };
 
-  // ==========================================
-  // --- الطباعة (PRINT) ---
-  // ==========================================
   const getSignerInfo = () => {
     let signerName = '.............................................';
     let signerRole = 'كاتب الضبط'; 
@@ -227,7 +213,6 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
     setIsPrintModalOpen(true);
   };
    
-
   const generateWordHTML = (dataObject, signerName, signerRole, docType) => {
     let formattedMainText = dataObject.formattedMainText || defaultMainText;
     formattedMainText = formattedMainText.replace(/\n/g, '<br>');
@@ -271,16 +256,18 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
     `;
   };
 
+  // 🔥 CORRECTION 5: GET BLOB (Impression Individuelle)
   const handleDownloadWordSingle = async (docType) => {
     if (docType === 'إنذار') {
       try {
         Swal.fire({ title: 'جاري تحميل الإنذار...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        const response = await fetch(`${API_URL}/download-indar/${printData.id}`, {
-          headers: { 'Authorization': `Bearer ${getToken()}` }
+        
+        const response = await api.get(`${API_URL}/download-indar/${printData.id}`, {
+          responseType: 'blob' // 👈 Indispensable avec Axios
         });
-        if (!response.ok) throw new Error('فشل في تحميل الإنذار');
-        const blob = await response.blob();
-        downloadFile(blob, `إنذار_${printData.debtor_name}.docx`, true);
+        
+        // Le fichier blob est directement dans response.data
+        downloadFile(response.data, `إنذار_${printData.debtor_name}.docx`, true);
         setIsPrintModalOpen(false);
         Swal.fire({ icon: 'success', title: 'تم التنزيل!', confirmButtonColor: '#003366', timer: 1500 });
       } catch (error) {
@@ -298,20 +285,20 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
     }
   };
 
+  // 🔥 CORRECTION 6: POST BLOB (Impression Groupée)
   const handleBulkPrint = async (docType) => {
     if (selectedIds.length === 0) return;
 
     if (docType === 'إنذار') {
       try {
         Swal.fire({ title: 'جاري إنشاء الملف المجمع...', text: 'قد يستغرق هذا بضع ثوانٍ', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        const response = await fetch(`${API_URL}/bulk-download-indar`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
-          body: JSON.stringify({ ids: selectedIds })
-        });
-        if (!response.ok) throw new Error('فشل في تحميل الإنذارات المجمعة');
-        const blob = await response.blob();
-        downloadFile(blob, `إنذارات_مجمعة_${type}_${new Date().toISOString().slice(0, 10)}.docx`, true);
+        
+        const response = await api.post(`${API_URL}/bulk-download-indar`, 
+          { ids: selectedIds },
+          { responseType: 'blob' } // 👈 Indispensable avec Axios
+        );
+        
+        downloadFile(response.data, `إنذارات_مجمعة_${type}_${new Date().toISOString().slice(0, 10)}.docx`, true);
         setSelectedIds([]); 
         Swal.fire({ icon: 'success', title: 'تم التنزيل!', confirmButtonColor: '#003366', timer: 1500 });
       } catch (error) {

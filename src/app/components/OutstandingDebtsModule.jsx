@@ -2,12 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, FileSpreadsheet, Loader2, AlertCircle, Calendar } from 'lucide-react';
 import Swal from 'sweetalert2';
 
+// 🔥 1. IMPORT D'AXIOS
+import api from '../api/axios'; 
+
 export function OutstandingDebtsModule() {
   // 1. États pour la navigation et la recherche
   const [activeTab, setActiveTab] = useState('outstanding');
   const [searchQuery, setSearchQuery] = useState('');
   
-  // 👈 NOUVEAU : État pour l'année sélectionnée (par défaut 2024 ou vide pour "Toutes")
+  // État pour l'année sélectionnée (par défaut 2024 ou vide pour "Toutes")
   const [selectedYear, setSelectedYear] = useState('');
   
   // 2. États pour les données de l'API
@@ -28,35 +31,23 @@ export function OutstandingDebtsModule() {
     setCurrentPage(1);
   }, [searchQuery, selectedYear, activeTab]);
 
-  // 💡 Fonction utilitaire pour obtenir le bon point de terminaison API selon l'onglet
+  // Fonction utilitaire pour obtenir le bon point de terminaison API selon l'onglet
   const getApiEndpoint = () => {
     if (activeTab === 'supplementary') return 'supplementary-fees';
-    if (activeTab === 'judicial_assistance') return 'judicial-assistance'; // Pour plus tard
-    return 'outstanding-debts'; // Par défaut
+    if (activeTab === 'judicial_assistance') return 'judicial-assistance'; 
+    return 'outstanding-debts'; 
   };
 
-  // 4. Fonction pour charger les données depuis Laravel
+  // 🔥 2. CORRECTION : GET avec Axios
   const fetchDebts = async () => {
     try {
       setIsLoading(true);
       
-      // 🔥 L'URL est maintenant dynamique !
-      const url = `http://127.0.0.1:8000/api/${getApiEndpoint()}?year=${selectedYear}`;
+      // Axios s'occupe de l'URL de base et du Token
+      const response = await api.get(`/${getApiEndpoint()}?year=${selectedYear}`);
       
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
-      }
-      
-      const jsonData = await response.json();
-      setData(jsonData);
+      // Les données sont directement dans response.data
+      setData(response.data);
       setError(null);
     } catch (err) {
       console.error("Erreur lors de la récupération des données:", err);
@@ -67,12 +58,12 @@ export function OutstandingDebtsModule() {
     }
   };
 
-  // 🔥 Recharger les données dès que l'année OU l'onglet change
+  // Recharger les données dès que l'année OU l'onglet change
   useEffect(() => {
     fetchDebts();
   }, [selectedYear, activeTab]);
 
-  // 5. Fonction d'importation Excel
+  // 🔥 3. CORRECTION : POST avec Axios pour FormData
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -83,15 +74,14 @@ export function OutstandingDebtsModule() {
     setIsUploading(true);
     setError(null);
 
-    // ⏳ 1. Afficher le SweetAlert de chargement
     Swal.fire({
       title: 'جاري الاستيراد...',
       text: 'المرجو الانتظار بينما يتم رفع ومعالجة الملف...',
-      allowOutsideClick: false, // Empêche de fermer en cliquant à côté
+      allowOutsideClick: false, 
       allowEscapeKey: false,
       showConfirmButton: false,
       didOpen: () => {
-        Swal.showLoading(); // Affiche le spinner animé de SweetAlert
+        Swal.showLoading(); 
       },
       customClass: {
         title: 'font-sans font-bold text-[#003366]',
@@ -100,26 +90,11 @@ export function OutstandingDebtsModule() {
     });
 
     try {
-      // 🔥 L'URL d'importation est aussi dynamique !
-      const url = `http://127.0.0.1:8000/api/${getApiEndpoint()}/import`;
-
-      const response = await fetch(url, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "حدث خطأ أثناء الاستيراد"); // Message d'erreur par défaut en arabe
-      }
+      // Axios configure tout seul les headers pour FormData (multipart/form-data)
+      await api.post(`/${getApiEndpoint()}/import`, formData);
 
       await fetchDebts(); 
       
-      // ✅ 2. Remplacer par le SweetAlert de succès
       Swal.fire({
         title: 'نجاح!',
         text: 'تم استيراد الملف بنجاح!',
@@ -136,10 +111,12 @@ export function OutstandingDebtsModule() {
     } catch (err) {
       console.error("Erreur d'importation:", err);
       
-      // ❌ 3. Remplacer par le SweetAlert d'erreur
+      // Axios stocke le message d'erreur du backend dans err.response.data
+      const errorMessage = err.response?.data?.message || 'فشل استيراد الملف. يرجى التحقق من التنسيق.';
+      
       Swal.fire({
         title: 'خطأ!',
-        text: err.message || 'فشل استيراد الملف. يرجى التحقق من التنسيق.',
+        text: errorMessage,
         icon: 'error',
         confirmButtonText: 'إغلاق',
         confirmButtonColor: '#ef4444',
@@ -158,25 +135,18 @@ export function OutstandingDebtsModule() {
     fileInputRef.current.click();
   };
 
-  // 6. Logique de filtrage (Recherche)
-  // 6. Logique de filtrage ultra-synchronisée (Année + Recherche)
+  // Logique de filtrage ultra-synchronisée (Année + Recherche)
   const filteredData = data.filter((row) => {
-    // A. Filtrage par année : 
-    // Si "كل السنوات" est sélectionné (selectedYear vide), on laisse passer tout.
-    // Sinon, on vérifie que l'année du dossier correspond à l'année choisie.
-    // 🔥 LE CORRECTIF FRONTEND EST ICI :
-    // On valide si l'année correspond, OU si l'année est écrite au début du numéro de dossier (ex: "2016/14")
     const yearMatch = !selectedYear || 
                       String(row.file_year) === String(selectedYear) || 
                       (row.collectionFileNumber && String(row.collectionFileNumber).includes(String(selectedYear)));
-    // B. Filtrage par recherche :
+    
     const query = searchQuery.toLowerCase();
     const nameMatch = row.fullName ? row.fullName.toLowerCase().includes(query) : false;
     const numberMatch = row.collectionFileNumber ? row.collectionFileNumber.toLowerCase().includes(query) : false;
     
     const searchMatch = !searchQuery || nameMatch || numberMatch;
 
-    // Le dossier ne s'affiche que s'il respecte l'année ET la recherche
     return yearMatch && searchMatch;
   });
 
@@ -203,7 +173,6 @@ export function OutstandingDebtsModule() {
         <div className="flex flex-col lg:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
           
           <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
-            {/* 👈 NOUVEAU : Le Select pour l'année */}
             <div className="relative w-full sm:w-48">
               <select 
                 value={selectedYear}
@@ -211,24 +180,17 @@ export function OutstandingDebtsModule() {
                 className="w-full pl-4 pr-10 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-base font-bold text-[#003366] appearance-none focus:ring-2 focus:ring-[#D4AF37] outline-none transition-all cursor-pointer"
               >
                 <option value="">كل السنوات</option>
-{/* Génération dynamique de 2000 jusqu'à l'année en cours */}
-
                 {(() => {
                   const startYear = 2000;
-                  
-                  // On récupère l'année actuelle, et on ajoute +5 ans dans le futur
-                  // Ainsi, même en 2026, le menu affichera jusqu'à 2031 !
                   const maxYear = new Date().getFullYear() + 5; 
-                  
                   const totalYears = maxYear - startYear + 1;
 
                   return Array.from({ length: totalYears }, (_, i) => startYear + i)
-                    .reverse() // Pour avoir les années les plus récentes en haut
+                    .reverse() 
                     .map(year => (
                       <option key={year} value={year}>سنة {year}</option>
                     ));
                 })()}
-                {/* 👆 ---------------------- 👆 */}
               </select>
               <Calendar className="w-5 h-5 text-[#D4AF37] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
@@ -254,7 +216,7 @@ export function OutstandingDebtsModule() {
           </div>
         </div>
 
-        {/* Tableau (reste inchangé) */}
+        {/* Tableau */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-right border-collapse min-w-[1200px]">

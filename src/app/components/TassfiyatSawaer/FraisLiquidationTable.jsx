@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Download, Calendar, Calculator, Loader2, ChevronDown, FileText } from 'lucide-react';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx-js-style';
+import api from '../../api/axios'; 
 
 export function FraisLiquidationTable() {
   const [selectedYear, setSelectedYear] = useState('2026');
@@ -34,37 +35,30 @@ export function FraisLiquidationTable() {
     group2Title: 'المبالغ المستخلصة (درهم)',
     
     subColExtraits: 'المختصرات',
-    subColTitres: 'السندات',     // 👈 Ajouté pour correspondre à ton image
-    subColInjonc: 'الأوامر بالدفع', // 👈 Réorganisé selon ton image
+    subColTitres: 'السندات',     
+    subColInjonc: 'الأوامر بالدفع', 
     subColFrais: 'الرسوم التكميلية',
     subColAssist: 'المساعدة القضائية',
     subColTotal: 'المجموع',
     
     totalAnnuel: 'المجموع السنوي',
     
-    // Ordre strict des 12 mois
     monthsKeys: ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'],
     months: {
-      '01': 'يناير', '02': 'فبراير', '03': 'مارس', '04': 'ابريل', // 'ابريل' sans hamza comme sur l'image
+      '01': 'يناير', '02': 'فبراير', '03': 'مارس', '04': 'ابريل', 
       '05': 'ماي', '06': 'يونيو', '07': 'يوليوز', '08': 'غشت',
       '09': 'شتنبر', '10': 'أكتوبر', '11': 'نونبر', '12': 'دجنبر'
     }
   };
 
+  // 🔥 LA CORRECTION EST ICI : Adaptation stricte à Axios
   const fetchStats = async (year) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/frais-stats?year=${year}`, {
-        headers: { 
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (!response.ok) throw new Error('فشل في جلب البيانات');
-
-      const rawData = await response.json();
-      setDbData(rawData);
+      const response = await api.get(`/frais-stats?year=${year}`);
+      
+      // Axios met directement les données JSON dans response.data
+      setDbData(response.data);
       
     } catch (error) {
       console.error(error);
@@ -84,20 +78,19 @@ export function FraisLiquidationTable() {
     fetchStats(selectedYear);
   }, [selectedYear]);
 
-  // 1. Formater les données brutes (Intégration des Titres/السندات)
   const data = useMemo(() => {
     return dbData.map(item => ({
       id: item.month,
       dossiers: {
         extraits: Number(item.extraits_dossiers) || 0,
-        titres: Number(item.titres_dossiers) || 0, // 👈 Ajouté
+        titres: Number(item.titres_dossiers) || 0,
         injonc: Number(item.injonc_dossiers) || 0,
         frais: Number(item.frais_dossiers) || 0,
         assist: Number(item.assist_dossiers) || 0,
       },
       montants: {
         extraits: Number(item.extraits_montant) || 0,
-        titres: Number(item.titres_montant) || 0, // 👈 Ajouté
+        titres: Number(item.titres_montant) || 0,
         injonc: Number(item.injonc_montant) || 0,
         frais: Number(item.frais_montant) || 0,
         assist: Number(item.assist_montant) || 0,
@@ -105,13 +98,11 @@ export function FraisLiquidationTable() {
     }));
   }, [dbData]);
 
-  // 2. Calculer les totaux globaux et par ligne
   const computedData = useMemo(() => {
     let globalDossiers = { extraits: 0, titres: 0, injonc: 0, frais: 0, assist: 0, total: 0 };
     let globalMontants = { extraits: 0, titres: 0, injonc: 0, frais: 0, assist: 0, total: 0 };
 
     const rows = data.map(row => {
-      // 👈 Ajout de titres dans le total
       const dTotal = row.dossiers.extraits + row.dossiers.titres + row.dossiers.injonc + row.dossiers.frais + row.dossiers.assist;
       const mTotal = row.montants.extraits + row.montants.titres + row.montants.injonc + row.montants.frais + row.montants.assist;
 
@@ -144,8 +135,6 @@ export function FraisLiquidationTable() {
     setIsYearDropdownOpen(false);
   };
 
-  // 🚀 LA FONCTION D'EXPORTATION EXACTEMENT COMME LA PHOTO
-  // 🚀 LA FONCTION D'EXPORTATION AVEC MISE EN FORME ET SANS ZÉROS
   const exportToExcel = () => {
     if (computedData.rows.length === 0) {
       Swal.fire({
@@ -157,7 +146,6 @@ export function FraisLiquidationTable() {
       return;
     }
 
-    // Helper : Si la valeur est 0, on renvoie une chaîne vide ''
     const valOrEmpty = (val) => (val === 0 || !val) ? '' : val;
 
     const excelData = [];
@@ -175,11 +163,11 @@ export function FraisLiquidationTable() {
           valOrEmpty(row.montants.frais), valOrEmpty(row.montants.assist), valOrEmpty(row.mTotal)
         ]);
       } else {
-        excelData.push([t.months[m], '', '', '', '', '', '']); // Mois vides = cellules vides
+        excelData.push([t.months[m], '', '', '', '', '', '']); 
       }
     });
 
-    // Ligne Totaux (Ligne 14)
+    // Ligne Totaux
     excelData.push([
       'المجموع',
       valOrEmpty(computedData.globalMontants.extraits), valOrEmpty(computedData.globalMontants.titres), 
@@ -188,12 +176,12 @@ export function FraisLiquidationTable() {
     ]);
 
     // --- ESPACEMENT ---
-    excelData.push(['', '', '', '', '', '', '']); // Ligne 15
-    excelData.push(['', '', '', '', '', '', '']); // Ligne 16
+    excelData.push(['', '', '', '', '', '', '']); 
+    excelData.push(['', '', '', '', '', '', '']); 
 
     // --- TABLEAU 2 : عدد الملفات المستخلصة (Dossiers) ---
-    excelData.push(['', 'عدد الملفات المستخلصة', '', '', '', '', '']); // Ligne 17
-    excelData.push(['', t.subColExtraits, t.subColTitres, t.subColInjonc, t.subColFrais, t.subColAssist, t.subColTotal]); // Ligne 18
+    excelData.push(['', 'عدد الملفات المستخلصة', '', '', '', '', '']); 
+    excelData.push(['', t.subColExtraits, t.subColTitres, t.subColInjonc, t.subColFrais, t.subColAssist, t.subColTotal]); 
 
     t.monthsKeys.forEach(m => {
       const row = computedData.rows.find(r => r.id === m);
@@ -204,11 +192,11 @@ export function FraisLiquidationTable() {
           valOrEmpty(row.dossiers.frais), valOrEmpty(row.dossiers.assist), valOrEmpty(row.dTotal)
         ]);
       } else {
-        excelData.push([t.months[m], '', '', '', '', '', '']); // Mois vides = cellules vides
+        excelData.push([t.months[m], '', '', '', '', '', '']); 
       }
     });
 
-    // Ligne Totaux (Ligne 31)
+    // Ligne Totaux
     excelData.push([
       'المجموع',
       valOrEmpty(computedData.globalDossiers.extraits), valOrEmpty(computedData.globalDossiers.titres), 
@@ -216,10 +204,8 @@ export function FraisLiquidationTable() {
       valOrEmpty(computedData.globalDossiers.assist), valOrEmpty(computedData.globalDossiers.total)
     ]);
 
-    // Création de la feuille
     const ws = XLSX.utils.aoa_to_sheet(excelData);
 
-    // --- 🎨 MISE EN FORME (STYLING) ---
     const borderStyle = {
       top: { style: "thin", color: { rgb: "000000" } },
       bottom: { style: "thin", color: { rgb: "000000" } },
@@ -228,15 +214,15 @@ export function FraisLiquidationTable() {
     };
 
     const headerStyle = {
-      font: { bold: true, color: { rgb: "FFFFFF" } }, // Texte blanc gras
-      fill: { fgColor: { rgb: "003366" } },           // Fond bleu
+      font: { bold: true, color: { rgb: "FFFFFF" } }, 
+      fill: { fgColor: { rgb: "003366" } },          
       alignment: { horizontal: "center", vertical: "center" },
       border: borderStyle
     };
 
     const boldRowStyle = {
       font: { bold: true },
-      fill: { fgColor: { rgb: "F3F4F6" } },           // Fond gris clair pour les totaux
+      fill: { fgColor: { rgb: "F3F4F6" } },          
       alignment: { horizontal: "center", vertical: "center" },
       border: borderStyle
     };
@@ -252,46 +238,42 @@ export function FraisLiquidationTable() {
       border: borderStyle
     };
 
-    // Parcourir toutes les cellules pour leur appliquer le bon style
     for (const key in ws) {
-      if (key.startsWith('!')) continue; // Ignorer les métadonnées de SheetJS
+      if (key.startsWith('!')) continue; 
       
       const cell = ws[key];
       const decoded = XLSX.utils.decode_cell(key);
-      const r = decoded.r; // Index de la Ligne (0-based)
-      const c = decoded.c; // Index de la Colonne (0-based)
+      const r = decoded.r; 
+      const c = decoded.c; 
       
-      // Lignes vides d'espacement (ne pas mettre de bordures)
       if (r === 15 || r === 16) continue;
 
-      // Appliquer les styles selon la position
       if (r === 0 || r === 1 || r === 17 || r === 18) {
-        cell.s = headerStyle; // En-têtes bleus
+        cell.s = headerStyle; 
       } else if (r === 14 || r === 31) {
-        cell.s = boldRowStyle; // Lignes des Totaux (Gras + Fond gris)
+        cell.s = boldRowStyle; 
       } else if (c === 0) {
-        cell.s = monthColumnStyle; // Colonne des mois (Gras)
+        cell.s = monthColumnStyle; 
       } else {
-        cell.s = normalStyle; // Reste du tableau (Normal avec bordures)
+        cell.s = normalStyle; 
       }
     }
 
-    // Fusions des cellules (Merges)
     ws['!merges'] = [
-      { s: { r: 0, c: 1 }, e: { r: 0, c: 6 } },  // Fusion "المبالغ المستخلصة"
-      { s: { r: 17, c: 1 }, e: { r: 17, c: 6 } } // Fusion "عدد الملفات المستخلصة"
+      { s: { r: 0, c: 1 }, e: { r: 0, c: 6 } },  
+      { s: { r: 17, c: 1 }, e: { r: 17, c: 6 } } 
     ];
 
-    ws['!dir'] = 'rtl'; // Direction de droite à gauche
+    ws['!dir'] = 'rtl'; 
 
     ws['!cols'] = [
-      { wch: 15 }, // Mois
-      { wch: 18 }, // Extraits
-      { wch: 18 }, // Titres
-      { wch: 18 }, // Injonctions
-      { wch: 18 }, // Frais
-      { wch: 18 }, // Assistance
-      { wch: 20 }  // Total
+      { wch: 15 }, 
+      { wch: 18 }, 
+      { wch: 18 }, 
+      { wch: 18 }, 
+      { wch: 18 }, 
+      { wch: 18 }, 
+      { wch: 20 }  
     ];
 
     const wb = XLSX.utils.book_new();
@@ -356,7 +338,7 @@ export function FraisLiquidationTable() {
             
             <button 
               onClick={exportToExcel}
-              disabled={isLoading} // Le bouton est dispo même si vide pour imprimer la grille
+              disabled={isLoading} 
               className="flex items-center gap-2 bg-[#003366] text-white hover:bg-[#002244] px-5 py-2.5 rounded-xl font-bold transition-all shadow-md hover:shadow-lg active:scale-95 border border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="w-5 h-5" />
@@ -365,7 +347,7 @@ export function FraisLiquidationTable() {
           </div>
         </div>
 
-        {/* UI Table Container (Ajusté avec les 6 colonnes + Mois) */}
+        {/* UI Table Container */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden relative">
           
           {isLoading && (

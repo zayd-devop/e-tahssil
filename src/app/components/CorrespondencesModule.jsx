@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Send, Printer, Plus, Building, User, FileText, Info, Hash, Loader2, Archive, Search, X } from 'lucide-react';
 import Swal from 'sweetalert2';
+import api from '../api/axios'; 
 
 export default function CorrespondencesModule() {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -42,26 +43,17 @@ export default function CorrespondencesModule() {
     setRecipientSupervisors(newSupervisors);
   };
 
-  // --- FONCTION POUR OUVRIR L'ARCHIVE ---
+  // --- 🔥 CORRECTION 1: FONCTION POUR OUVRIR L'ARCHIVE (100% AXIOS) ---
   const openArchiveModal = async () => {
     setIsArchiveModalOpen(true);
     setIsLoadingArchive(true);
     
     try {
-      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const response = await fetch('http://127.0.0.1:8000/api/correspondences/archive', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
+      // Plus besoin de récupérer le token, Axios le fait
+      const response = await api.get('/correspondences/archive');
       
-      if (response.ok) {
-        const data = await response.json();
-        setArchiveData(data);
-      } else {
-        throw new Error('Failed to fetch archive');
-      }
+      // Axios parse le JSON automatiquement dans response.data
+      setArchiveData(response.data);
     } catch (error) {
       console.error('Erreur:', error);
       Swal.fire({ icon: 'error', title: 'خطأ', text: 'تعذر تحميل الأرشيف' });
@@ -70,18 +62,18 @@ export default function CorrespondencesModule() {
     }
   };
 
-  // Filtrer les données de l'archive selon la recherche (MODIFIÉ ICI)
+  // Filtrer les données de l'archive selon la recherche
   const filteredArchive = archiveData.filter(item => {
     const query = searchArchiveQuery.toLowerCase();
     return (
-      (item.registration_number && item.registration_number.toLowerCase().includes(query)) || // Ajout de la recherche par numéro d'enregistrement
+      (item.registration_number && item.registration_number.toLowerCase().includes(query)) ||
       (item.recipient_to && item.recipient_to.toLowerCase().includes(query)) ||
       (item.subject && item.subject.toLowerCase().includes(query)) ||
       (item.date_envoi && item.date_envoi.includes(query))
     );
   });
 
-  // --- FONCTION POUR GÉNÉRER LA LETTRE ---
+  // --- 🔥 CORRECTION 2: FONCTION POUR GÉNÉRER LA LETTRE (100% AXIOS AVEC BLOB) ---
   const handlePrint = async () => {
     if (!recipientInfo.to || !tableInfo.subject) {
       Swal.fire({
@@ -133,22 +125,13 @@ export default function CorrespondencesModule() {
         signer_role: signerRole
       };
 
-      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const response = await fetch('http://127.0.0.1:8000/api/generate-dispatch', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
+      // 🔥 Requête POST Axios avec l'option blob pour les fichiers
+      const response = await api.post('/generate-dispatch', payload, {
+        responseType: 'blob' // TRÈS IMPORTANT pour télécharger un fichier Word
       });
 
-      if (!response.ok) {
-        throw new Error('Erreur réseau lors de la génération');
-      }
-
-      const blob = await response.blob();
+      // Avec Axios, le fichier Blob est directement dans response.data
+      const blob = response.data;
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -343,23 +326,20 @@ export default function CorrespondencesModule() {
                 ></textarea>
               </div>
               <div className="max-w-5xl mx-auto flex justify-start pl-64">
-          <button 
-            onClick={handlePrint}
-            disabled={isGenerating}
-            className={`flex items-center justify-center gap-2 px-6 py-3 text-white rounded-lg font-bold transition-colors focus:ring-4 shadow-md
-              ${isGenerating ? 'bg-[#002244]/70 cursor-wait' : 'bg-[#002244] hover:bg-[#00152b] focus:ring-[#002244]/30'}`}
-          >
-            {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Printer className="w-5 h-5" />}
-            <span>{isGenerating ? 'جاري التحضير...' : 'تنزيل ملف Word'}</span>
-          </button>
-        </div>
+                <button 
+                  onClick={handlePrint}
+                  disabled={isGenerating}
+                  className={`flex items-center justify-center gap-2 px-6 py-3 text-white rounded-lg font-bold transition-colors focus:ring-4 shadow-md
+                    ${isGenerating ? 'bg-[#002244]/70 cursor-wait' : 'bg-[#002244] hover:bg-[#00152b] focus:ring-[#002244]/30'}`}
+                >
+                  {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Printer className="w-5 h-5" />}
+                  <span>{isGenerating ? 'جاري التحضير...' : 'تنزيل ملف Word'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Footer / Bouton Fixe */}
-        
 
       {/* --- MODAL D'ARCHIVE --- */}
       {isArchiveModalOpen && (
@@ -383,7 +363,6 @@ export default function CorrespondencesModule() {
             {/* Barre de recherche Modal */}
             <div className="p-4 border-b border-gray-100 bg-gray-50/50">
               <div className="relative max-w-md mx-auto md:mx-0 md:mr-auto">
-                {/* Le placeholder est mis à jour ici */}
                 <input 
                   type="text" 
                   value={searchArchiveQuery}
