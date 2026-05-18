@@ -33,17 +33,36 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
   }, [type, selectedYear]);
 
   // 🔥 CORRECTION 1: GET (Liste)
+  // 🔥 CORRECTION : Utilisation des paramètres dynamiques Axios
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const response = await api.get(`${API_URL}/${type}?year=${selectedYear}`);
       
-      // Axios parse le JSON tout seul dans response.data
+      // 1. On prépare un objet de paramètres vide
+      const queryParams = {};
+      
+      // 2. On n'ajoute 'year' QUE s'il contient une vraie valeur (ex: '2026')
+      // Si selectedYear est vide (''), il ne sera pas envoyé du tout au serveur !
+      if (selectedYear) {
+        queryParams.year = selectedYear;
+      }
+
+      // 3. On passe l'objet params à Axios
+      const response = await api.get(`${API_URL}/${type}`, {
+        params: queryParams
+      });
+      
+      // Axios injecte directement le résultat JSON dans response.data
       setData(response.data);
       
     } catch (error) {
       console.error('Erreur:', error);
-      Swal.fire({ icon: 'error', title: 'خطأ', text: 'تعذر تحميل البيانات', confirmButtonColor: '#003366' });
+      Swal.fire({ 
+        icon: 'error', 
+        title: 'خطأ', 
+        text: 'تعذر تحميل البيانات', 
+        confirmButtonColor: '#003366' 
+      });
     } finally {
       setIsLoading(false);
     }
