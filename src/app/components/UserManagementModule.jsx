@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { FileSpreadsheet, Trash2, Search, User, Shield, ShieldAlert, CheckCircle2, XCircle, Key, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Trash2, Search, User, Shield, ShieldAlert, CheckCircle2, XCircle, Key, Loader2, UserPlus, X, Plus } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 // 🔥 1. IMPORT D'AXIOS
@@ -10,20 +10,28 @@ export function UserManagementModule() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  const fileInputRef = useRef(null);
+  // Éléments d'état pour la nouvelle modale d'ajout
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newUser, setNewUser] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    password: '',
+    role: 'clerk',
+    type_responsabilite: 'منتدب قضائي',
+    grade: 'الدرجة الثانية'
+  });
 
   useEffect(() => {
     fetchUsers();
   }, []);
 
-  // 🔥 2. CORRECTION : GET avec Axios
+  // 🔥 2. GET avec Axios
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      // Axios gère l'URL de base et le Token
       const response = await api.get('/users');
-      
-      // Axios parse le JSON, on accède directement à response.data.data (selon la structure de ton backend)
       setUsers(response.data.data || response.data);
     } catch (error) {
       console.error("Erreur lors du chargement des utilisateurs:", error);
@@ -32,37 +40,59 @@ export function UserManagementModule() {
     }
   };
 
-  // 🔥 3. CORRECTION : POST avec FormData (Import)
-  const handleFileUpload = async (e) => {
+  // 🔥 3. NOUVELLE FONCTION : Ajout manuel d'un fonctionnaire
+  const handleAddUserSubmit = async (e) => {
     e.preventDefault();
-    let file = e.target.files?.[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    Swal.fire({
-      title: 'جاري استيراد الموظفين...',
-      allowOutsideClick: false,
-      didOpen: () => { Swal.showLoading(); }
-    });
+    setIsSubmitting(true);
 
     try {
-      const response = await api.post('/users/import', formData);
+      // Envoi des données complètes à l'API Laravel
+      const response = await api.post('/users', newUser);
 
-      // On met à jour la liste avec les nouvelles données renvoyées par le serveur
-      setUsers(response.data.data || response.data);
-      Swal.fire({ icon: 'success', title: 'تم استيراد الموظفين بنجاح', timer: 2000, showConfirmButton: false });
-      
+      Swal.fire({
+        icon: 'success',
+        title: 'تم الإضافة!',
+        text: 'تم تسجيل الموظف الجديد بنجاح في قاعدة البيانات',
+        confirmButtonColor: '#003366',
+        confirmButtonText: 'حسناً'
+      });
+
+      // Réinitialisation et fermeture
+      setIsAddModalOpen(false);
+      setNewUser({
+        first_name: '',
+        last_name: '',
+        email: '',
+        password: '',
+        role: 'clerk',
+        type_responsabilite: 'منتدب قضائي',
+        grade: 'الدرجة الثانية'
+      });
+
+      // Recharger la liste pour afficher le nouveau venu
+      fetchUsers();
+
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 'فشل الاستيراد';
-      Swal.fire({ icon: 'error', title: 'فشل الاستيراد', text: errorMessage });
+      console.error(error);
+      const errorMessage = error.response?.data?.message || 'حدث خطأ أثناء إضافة الموظف';
+      Swal.fire({
+        icon: 'error',
+        title: 'خطأ!',
+        text: errorMessage,
+        confirmButtonColor: '#ef4444',
+        confirmButtonText: 'إغلاق'
+      });
     } finally {
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      setIsSubmitting(false);
     }
   };
 
-  // 🔥 4. CORRECTION : DELETE avec Axios
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewUser(prev => ({ ...prev, [name]: value }));
+  };
+
+  // 🔥 4. DELETE avec Axios
   const handleDelete = async (id, name) => {
     const result = await Swal.fire({
       title: 'هل أنت متأكد؟',
@@ -78,18 +108,15 @@ export function UserManagementModule() {
     if (result.isConfirmed) {
       try {
         await api.delete(`/users/${id}`);
-
-        // Mise à jour de l'état local sans recharger la page
         setUsers(users.filter(user => user.id !== id));
         Swal.fire('تم الحذف!', 'تم حذف الحساب بنجاح.', 'success');
-        
       } catch (error) {
         Swal.fire('خطأ', 'حدث خطأ أثناء الحذف', 'error');
       }
     }
   };
 
-  // 🔥 5. CORRECTION : POST avec Axios
+  // 🔥 5. POST avec Axios (Reset Password)
   const handleResetPassword = async (id, name) => {
     const result = await Swal.fire({
       title: 'إعادة تعيين كلمة السر؟',
@@ -105,15 +132,12 @@ export function UserManagementModule() {
     if (result.isConfirmed) {
       try {
         const response = await api.post(`/users/${id}/reset-password`);
-
         Swal.fire({
           icon: 'success',
           title: 'تم إعادة التعيين!',
-          // On récupère le nouveau mot de passe directement depuis response.data
           html: `كلمة السر الجديدة هي:<br><b style="font-size: 20px; color: #D4AF37;">${response.data.new_password}</b>`,
           confirmButtonColor: '#003366'
         });
-        
       } catch (error) {
         Swal.fire('خطأ', 'حدث خطأ أثناء العملية', 'error');
       }
@@ -127,21 +151,22 @@ export function UserManagementModule() {
 
   // 🔥 6. SÉCURITÉ FRONT-END : Masquer le rôle "writer"
   const filteredUsers = users.filter(user => {
-    // 🛑 On s'assure de ne JAMAIS afficher les "writers"
     const userRole = user.roleType || user.role_type;
     if (userRole === 'writer') return false;
 
-    // Filtre de recherche classique
     const query = searchQuery.toLowerCase();
-    const fullName = `${user.firstName || user.first_name} ${user.lastName || user.last_name}`.toLowerCase();
-    return fullName.includes(query) || user.email.toLowerCase().includes(query);
+    const fullName = `${user.firstName || user.first_name || ''} ${user.lastName || user.last_name || ''}`.toLowerCase();
+    return fullName.includes(query) || (user.email && user.email.toLowerCase().includes(query));
   });
+
+  const inputClassName = "w-full p-3 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent bg-gray-50 outline-none font-medium text-[#003366] text-right mt-1.5";
+  const labelClassName = "block text-xs font-bold text-gray-700 text-right";
 
   return (
     <div className="bg-gray-50/50 min-h-full font-sans" dir="rtl">
       <div className="max-w-7xl mx-auto space-y-6">
         
-        {/* Header & Bouton d'importation */}
+        {/* Header & Boutons d'actions */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-200 pb-6 pt-2">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 bg-[#003366] rounded-2xl shadow-lg flex items-center justify-center border-2 border-[#D4AF37]/30">
@@ -153,20 +178,20 @@ export function UserManagementModule() {
             </div>
           </div>
           
-          <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} />
-          
-          <button 
-            onClick={() => fileInputRef.current.click()}
-            className="flex items-center gap-2 px-6 py-3.5 bg-[#D4AF37] text-[#003366] rounded-xl font-bold hover:bg-[#C5A028] shadow-lg hover:shadow-xl transition-all active:scale-95"
-          >
-            <FileSpreadsheet className="w-5 h-5" />
-            <span>استيراد قائمة الموظفين</span>
-          </button>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            {/* 🔥 BOUTON D'AJOUT MANUEL UNIQUE */}
+            <button 
+              onClick={() => setIsAddModalOpen(true)}
+              className="flex items-center gap-2 px-6 py-3.5 bg-[#003366] text-white rounded-xl font-bold hover:bg-[#002244] shadow-lg transition-all active:scale-95 border border-transparent w-full sm:w-auto justify-center"
+            >
+              <UserPlus className="w-5 h-5 text-[#D4AF37]" />
+              <span>إضافة موظف جديد</span>
+            </button>
+          </div>
         </div>
 
         {/* Section Table de Données */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-          {/* Barre de recherche et statistiques */}
           <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-white">
             <div className="relative w-72">
               <input 
@@ -183,7 +208,6 @@ export function UserManagementModule() {
             </div>
           </div>
 
-          {/* Tableau */}
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-right">
               <thead className="bg-[#003366] text-white font-bold border-b border-[#002244]">
@@ -213,7 +237,7 @@ export function UserManagementModule() {
                             {getInitials(user.firstName || user.first_name, user.lastName || user.last_name)}
                           </div>
                           <div>
-                            <div className="font-bold text-gray-900">{`${user.firstName || user.first_name} ${user.lastName || user.last_name}`}</div>
+                            <div className="font-bold text-gray-900">{`${user.firstName || user.first_name || ''} ${user.lastName || user.last_name || ''}`}</div>
                           </div>
                         </div>
                       </td>
@@ -229,18 +253,18 @@ export function UserManagementModule() {
                             : 'bg-blue-50 text-blue-700 border-blue-200'
                         }`}>
                           {(user.roleType || user.role_type) === 'admin' ? <ShieldAlert className="w-3.5 h-3.5" /> : <Shield className="w-3.5 h-3.5" />}
-                          {user.role}
+                          {user.role || ((user.roleType || user.role_type) === 'admin' ? 'رئيس الوحدة' : 'منتدب قضائي')}
                         </span>
                       </td>
                       
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${
-                          user.status === 'نشط' 
+                          user.status === 'نشط' || !user.status
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
                             : 'bg-gray-100 text-gray-600 border-gray-300'
                         }`}>
-                          {user.status === 'نشط' ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
-                          {user.status}
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          {user.status || 'نشط'}
                         </span>
                       </td>
                       
@@ -269,11 +293,7 @@ export function UserManagementModule() {
                     </tr>
                   ))
                 ) : (
-                  <tr>
-                    <td colSpan="6" className="px-6 py-20 text-center text-gray-400">
-                      لا يوجد موظفين.
-                    </td>
-                  </tr>
+                  <tr><td colSpan="6" className="px-6 py-20 text-center text-gray-400">لا يوجد موظفين.</td></tr>
                 )}
               </tbody>
             </table>
@@ -283,8 +303,102 @@ export function UserManagementModule() {
             <span className="text-sm text-gray-500">عرض {filteredUsers.length} من أصل {filteredUsers.length} سجلات</span>
           </div>
         </div>
-        
       </div>
+
+      {/* ===== 🔥 FENÊTRE MODALE DE CRÉATION DE FONCTIONNAIRE ===== */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden border border-gray-100 relative animate-in fade-in zoom-in-95 duration-200 my-auto">
+            
+            {/* Header de la Modale */}
+            <div className="bg-[#003366] px-6 py-4 flex items-center justify-between text-white">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-[#D4AF37]" /> 
+                إضافة حساب موظف جديد
+              </h2>
+              <button 
+                onClick={() => setIsAddModalOpen(false)} 
+                className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* Formulaire de saisie */}
+            <form onSubmit={handleAddUserSubmit} className="p-6 space-y-4">
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={labelClassName}>الاسم الشخصي <span className="text-red-500">*</span></label>
+                  <input type="text" name="first_name" value={newUser.first_name} onChange={handleInputChange} className={inputClassName} required />
+                </div>
+                <div>
+                  <label className={labelClassName}>الاسم العائلي <span className="text-red-500">*</span></label>
+                  <input type="text" name="last_name" value={newUser.last_name} onChange={handleInputChange} className={inputClassName} required />
+                </div>
+              </div>
+
+              <div>
+                <label className={labelClassName}>البريد الإلكتروني الحسابي <span className="text-red-500">*</span></label>
+                <input type="email" name="email" value={newUser.email} onChange={handleInputChange} className={`${inputClassName} text-left font-mono`} placeholder="p.nom@tahssil.ma" dir="ltr" required />
+              </div>
+
+              <div>
+                <label className={labelClassName}>كلمة المرور الأولية <span className="text-red-500">*</span></label>
+                <input type="password" name="password" value={newUser.password} onChange={handleInputChange} className={`${inputClassName} text-left font-mono`} placeholder="••••••••" dir="ltr" required />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={labelClassName}>نوع المسؤولية</label>
+                  <select name="type_responsabilite" value={newUser.type_responsabilite} onChange={handleInputChange} className={`${inputClassName} bg-white cursor-pointer`}>
+                    <option value="منتدب قضائي">منتدب قضائي</option>
+                    <option value="محرر قضائي">محرر قضائي</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClassName}>الدرجة</label>
+                  <select name="grade" value={newUser.grade} onChange={handleInputChange} className={`${inputClassName} bg-white cursor-pointer`}>
+                    <option value="الدرجة الأولى">الدرجة الأولى</option>
+                    <option value="الدرجة الثانية">الدرجة الثانية</option>
+                    <option value="الدرجة الثالثة">الدرجة الثالثة</option>
+                    <option value="الدرجة الرابعة">الدرجة الرابعة</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className={labelClassName}>صلاحية النظام (الدور)</label>
+                <select name="role" value={newUser.role} onChange={handleInputChange} className={`${inputClassName} bg-white cursor-pointer font-bold text-[#003366]`}>
+                  <option value="clerk">موظف / كاتب الضبط</option>
+                  <option value="admin">مسؤول رئيس الوحدة (Admin)</option>
+                </select>
+              </div>
+
+              {/* Actions de pied de page de la modale */}
+              <div className="pt-4 border-t flex justify-end gap-3 mt-6">
+                <button 
+                  type="button" 
+                  onClick={() => setIsAddModalOpen(false)} 
+                  className="px-5 py-2.5 text-gray-600 bg-white border border-gray-300 rounded-xl font-bold hover:bg-gray-100 transition-all text-sm"
+                >
+                  إلغاء
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isSubmitting}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-[#003366] text-white rounded-xl font-bold hover:bg-[#002244] shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  <span>حفظ الموظف</span>
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

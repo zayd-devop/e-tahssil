@@ -23,6 +23,7 @@ export function Sidebar({ activeMenu, onMenuChange, role }) {
     { id: 'outstanding', icon: BookOpen, label: 'الباقي بدون تحصيل' },
     { id: 'frais', icon: Calculator, label: 'تصفية الصوائر' },
     { id: 'documents', icon: FileSignature, label: 'توليد الوثائق' },
+    { id: 'coercion', icon: Gavel, label: 'ملفات الإكراه البدني' },
     { id: 'users', icon: Users, label: 'إدارة الموظفين', adminOnly: true },
   ];
 

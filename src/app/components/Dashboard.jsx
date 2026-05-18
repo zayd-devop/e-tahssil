@@ -13,6 +13,7 @@ import CorrespondencesModule from './CorrespondencesModule';
 import { ProductionCards } from './ProductionCards';
 import ProceduresTabsContainer from './ProceduresTabsContainer';
 import HearingMinutesModule from './HearingMinutesModule';
+import { CoercionFilesModule } from './CoercionFilesModule';
 
 // 🔥 1. On accepte 'initialRole' envoyé par App.jsx pour une synchronisation immédiate
 export function Dashboard({ onLogout, initialRole }) {
@@ -115,6 +116,8 @@ export function Dashboard({ onLogout, initialRole }) {
           {activeMenu === 'correspondences' && <CorrespondencesModule />}
 
           {activeMenu === 'frais' && <FraisModule />}
+
+          {activeMenu === 'coercion' && <CoercionFilesModule />}
 
           {activeMenu === 'users' && role === 'admin' && <UserManagementModule />}
           

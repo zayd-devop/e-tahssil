@@ -5,8 +5,10 @@ import {
   FileSpreadsheet, 
   Send, 
   Trophy,
-  ArrowUpRight,
-  ArrowDownRight
+  Gavel, // 👈 Ajout de l'icône Gavel pour l'إكراه بدني
+  Clock,
+  CheckCircle2,
+  Scale
 } from 'lucide-react';
 import { 
   ComposedChart, 
@@ -57,7 +59,7 @@ export function KPICards() {
     { id: 10, name: 'أكتوبر' }, { id: 11, name: 'نونبر' }, { id: 12, name: 'دجنبر' }
   ];
 
-  // 🔥 CORRECTION 2: GET simple des stats avec AXIOS et params
+  // 🔥 GET simple des stats avec AXIOS et params
   useEffect(() => {
     const fetchDashboardStats = async () => {
       try {
@@ -119,12 +121,21 @@ export function KPICards() {
     kpis = {}, 
     monthlyData = [], 
     productivityDataSets = {}, 
-    clerksData = [] 
+    clerksData = [],
+    coercionStats = { pending: 0, judged: 0, executed: 0 } // 👈 NOUVEAU : Récupération sécurisée depuis le backend
   } = dashboardData || {};
 
   const currentChartData = productivityDataSets[activeFilter] || { data: [], average: 0, unit: '' };
 
-  // 🔥 CORRECTION 3: Export Excel en Blob avec AXIOS
+  // 🔥 Préparation des données pour le nouveau graphique d'Écrah البدني
+  const coercionChartData = [
+    { name: 'في طور', value: coercionStats.pending || 0, fill: '#3b82f6', icon: <Clock className="w-4 h-4 text-blue-600" />, bg: 'bg-blue-50' },
+    { name: 'محكوم', value: coercionStats.judged || 0, fill: '#8b5cf6', icon: <Scale className="w-4 h-4 text-purple-600" />, bg: 'bg-purple-50' },
+    { name: 'منفذ', value: coercionStats.executed || 0, fill: '#10b981', icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />, bg: 'bg-emerald-50' },
+  ];
+  const totalCoercionFiles = coercionChartData.reduce((acc, curr) => acc + curr.value, 0);
+
+  // Export Excel en Blob avec AXIOS
   const handleExportExcel = async () => {
     try {
       Swal.fire({
@@ -138,13 +149,11 @@ export function KPICards() {
         params.month = selectedMonth;
       }
 
-      // Requête GET avec responseType: 'blob'
       const response = await api.get('/dashboard/export', {
         params,
         responseType: 'blob'
       });
 
-      // Le fichier Blob est directement dans response.data
       const blob = response.data;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -163,9 +172,6 @@ export function KPICards() {
     }
   };
 
-  // --------------------------------------------------------
-  // 4. Rendu Principal de la page
-  // --------------------------------------------------------
   return (
     <div className="bg-[#F9FAFB] min-h-full font-sans flex flex-col" dir="rtl">
       <div className="max-w-7xl mx-auto space-y-6 pt-2 w-full flex-1 pb-10">
@@ -295,6 +301,78 @@ export function KPICards() {
           </div>
         </div>
 
+        {/* --- 🛑 🔥 NOUVELLE SECTION : إحصائيات ملفات الإكراه البدني حسب الحالة --- */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center gap-3 mb-6 border-b border-gray-100 pb-4">
+            <div className="w-10 h-10 bg-[#003366]/5 rounded-xl flex items-center justify-center text-[#003366]">
+              <Gavel className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-[#003366]">وضعية ملفات الإكراه البدني</h2>
+              <p className="text-xs text-gray-400 mt-0.5">توزيع الملفات حسب وضعيتها القانونية والتنفيذية الحالية</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col md:flex-row items-center justify-center gap-12 h-[280px]">
+            {/* Légende détaillée à droite */}
+            <div className="w-full md:w-1/3 flex flex-col gap-3">
+              {coercionChartData.map((entry, index) => (
+                <div key={index} className="flex items-center justify-between p-3.5 rounded-xl bg-gray-50/50 border border-gray-100 hover:shadow-sm transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${entry.bg}`}>{entry.icon}</div>
+                    <span className="font-bold text-gray-700 text-sm">{entry.name}</span>
+                  </div>
+                  <div className="text-left">
+                    <span className="font-black text-gray-900 text-lg">{entry.value}</span>
+                    <span className="text-xs text-gray-400 font-bold mr-1">ملف</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Doughnut Chart Recharts à gauche */}
+            <div className="w-full md:w-1/2 flex justify-center relative h-full" dir="ltr">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={totalCoercionFiles > 0 ? coercionChartData : [{ value: 1, fill: '#f3f4f6' }]} 
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={75}
+                    outerRadius={110}
+                    paddingAngle={4}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {totalCoercionFiles > 0 ? (
+                      coercionChartData.map((entry, index) => (
+                        <Cell key={`coercion-cell-${index}`} fill={entry.fill} />
+                      ))
+                    ) : (
+                      <Cell fill="#f3f4f6" /> 
+                    )}
+                  </Pie>
+                  {totalCoercionFiles > 0 && (
+                    <Tooltip 
+                      formatter={(value) => [`${value} ملف`, 'العدد الإجمالي']}
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', direction: 'rtl' }}
+                      itemStyle={{ fontWeight: 'bold' }}
+                    />
+                  )}
+                </PieChart>
+              </ResponsiveContainer>
+              
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none w-full" dir="rtl">
+                <span className="text-xs text-gray-400 font-bold mb-0.5">مجموع الملفات</span>
+                <span className="text-3xl font-black text-[#003366] inline-block" dir="ltr">
+                  {totalCoercionFiles}
+                </span>
+                <span className="text-xs text-gray-500 mt-0.5 font-bold">قضية إكراه</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* 3. Middle-Lower Section - Productivity (Doughnut Chart avec Filtre) */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 relative overflow-hidden">
           
@@ -401,7 +479,6 @@ export function KPICards() {
         {/* --- Bottom Section - Detailed Clerk Performance Table --- */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative">
           
-          {/* 🔥 NOUVEAU : Effet de chargement spécifique au tableau */}
           {isLoading && dashboardData && (
             <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-20 flex items-center justify-center">
               <div className="animate-spin rounded-full h-10 w-10 border-b-4 border-[#003366]"></div>
@@ -411,7 +488,6 @@ export function KPICards() {
           <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white">
             <h2 className="text-lg font-bold text-[#003366]">الإنتاجية الشهرية التفصيلية لكل موظف</h2>
             
-            {/* 🔥 NOUVEAU : Filtres pour le tableau (Liés aux mêmes States) */}
             <div className="flex flex-wrap items-center gap-3">
               <select 
                 className="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl focus:ring-[#003366] focus:border-[#003366] px-4 py-2 outline-none font-bold cursor-pointer hover:bg-gray-100 transition-colors"
@@ -437,7 +513,7 @@ export function KPICards() {
               <button className="flex items-center gap-2 px-4 py-2 bg-[#003366]/5 border border-[#003366]/10 text-[#003366] rounded-xl text-sm font-bold hover:bg-[#003366]/10 transition-colors"
               onClick={handleExportExcel}>
                 <TrendingUp className="w-4 h-4" />
-                <span>تصدير التقرير</span>
+                <span>تصدير Tقرير</span>
               </button>
             </div>
           </div>
