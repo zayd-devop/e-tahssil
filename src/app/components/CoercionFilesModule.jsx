@@ -1,31 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Gavel, 
-  UserPlus, 
-  Search, 
-  X, 
-  Calendar, 
-  User, 
-  FileText, 
-  CreditCard, 
-  ChevronDown, 
-  CheckCircle, 
-  Clock, 
-  Scale, 
-  Loader2, 
-  Plus, 
-  Filter, 
-  FileSpreadsheet,
-  Database
-} from 'lucide-react';
+import { Gavel, UserPlus, Search, X, Calendar, User, FileText, CreditCard, ChevronDown, CheckCircle, Clock, Scale, Loader2, Plus, Filter, FileSpreadsheet, Database } from 'lucide-react';
 import Swal from 'sweetalert2';
 import api from '../api/axios'; 
 
 export function CoercionFilesModule() {
-  // --- GESTION DES ONGLETS ---
-  const [activeTab, setActiveTab] = useState('tracking'); // 'tracking' ou 'archive'
+  const [activeTab, setActiveTab] = useState('tracking'); 
 
-  // --- ÉTATS DES DONNÉES ---
   const [coercionFiles, setCoercionFiles] = useState([]);
   const [judges, setJudges] = useState([]);
   const [excelFiles, setExcelFiles] = useState([]); 
@@ -38,11 +18,9 @@ export function CoercionFilesModule() {
 
   const fileInputRef = useRef(null);
 
-  // --- ÉTATS DES MODALES ---
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [statusUpdateFile, setStatusUpdateFile] = useState(null);
 
-  // --- ÉTATS DES FORMULAIRES ---
   const [addForm, setAddForm] = useState({
     file_number: '',
     registration_date: new Date().toISOString().split('T')[0], 
@@ -59,7 +37,6 @@ export function CoercionFilesModule() {
     collection_date: ''
   });
 
-  // --- CHARGEMENT INITIAL ---
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -75,15 +52,12 @@ export function CoercionFilesModule() {
     }
   };
 
-  const coercionFilesValue = coercionFiles;
-  const excelFilesValue = excelFiles;
-
   const fetchCoercionFiles = async () => {
     try {
       const response = await api.get('/coercion-files');
       setCoercionFiles(response.data);
     } catch (error) {
-      console.error("Erreur de chargement des dossiers d'إكراه:", error);
+      console.error("Erreur:", error);
     }
   };
 
@@ -92,7 +66,7 @@ export function CoercionFilesModule() {
       const response = await api.get('/judges');
       setJudges(response.data);
     } catch (error) {
-      console.error("Erreur de chargement des juges:", error);
+      console.error("Erreur:", error);
     }
   };
 
@@ -101,7 +75,7 @@ export function CoercionFilesModule() {
       const response = await api.get('/coercion-excel-registry');
       setExcelFiles(response.data);
     } catch (error) {
-      console.error("Erreur de chargement du registre Excel:", error);
+      console.error("Erreur:", error);
     }
   };
 
@@ -116,13 +90,13 @@ export function CoercionFilesModule() {
       setIsImporting(true);
       Swal.fire({ title: 'جاري استيراد سجل ملفات الإكراه...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
       
-      await api.post('/coercion-files/import-registry', formData);
+      await api.post('/coercion-excel-registry/import', formData);
       
       Swal.fire({ icon: 'success', title: 'تم الاستيراد بنجاح', text: 'تم دمج السجل التاريخي بنجاح', confirmButtonColor: '#003366' });
       fetchExcelRegistry();
     } catch (error) {
       console.error(error);
-      Swal.fire({ icon: 'error', title: 'خطأ', text: error.response?.data?.message || 'فشل استيراد الملف', confirmButtonColor: '#003366' });
+      Swal.fire({ icon: 'error', title: 'خطأ', text: error.response?.data?.error || 'فشل استيراد الملف', confirmButtonColor: '#003366' });
     } finally {
       setIsImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -134,19 +108,12 @@ export function CoercionFilesModule() {
     try {
       Swal.fire({ title: 'جاري حفظ الملف...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
       await api.post('/coercion-files', addForm);
-      Swal.fire({ icon: 'success', title: 'تمت الإضافة بنجاح!', text: 'تم تسجيل ملف الإكراه البدني بنجاح', confirmButtonColor: '#003366', timer: 2000 });
+      Swal.fire({ icon: 'success', title: 'تمت الإضافة بنجاح!', confirmButtonColor: '#003366', timer: 2000 });
       setIsAddModalOpen(false);
-      setAddForm({
-        file_number: '',
-        registration_date: new Date().toISOString().split('T')[0],
-        debtor_name: '',
-        amount: '',
-        judge_id: ''
-      });
+      setAddForm({ file_number: '', registration_date: new Date().toISOString().split('T')[0], debtor_name: '', amount: '', judge_id: '' });
       fetchCoercionFiles(); 
     } catch (error) {
-      const msg = error.response?.data?.message || 'حدث خطأ أثناء حفظ الملف';
-      Swal.fire({ icon: 'error', title: 'خطأ', text: msg, confirmButtonColor: '#003366' });
+      Swal.fire({ icon: 'error', title: 'خطأ', text: error.response?.data?.message || 'حدث خطأ أثناء حفظ الملف', confirmButtonColor: '#003366' });
     }
   };
 
@@ -163,9 +130,7 @@ export function CoercionFilesModule() {
       confirmButtonText: 'إضافة الحساب',
       cancelButtonText: 'إلغاء',
       confirmButtonColor: '#003366',
-      inputValidator: (value) => {
-        if (!value) return 'المرجو إدخال اسم القاضي!';
-      }
+      inputValidator: (value) => { if (!value) return 'المرجو إدخال اسم القاضي!'; }
     });
 
     if (judgeName) {
@@ -174,9 +139,9 @@ export function CoercionFilesModule() {
         const response = await api.post('/judges', { name: judgeName });
         await fetchJudges(); 
         setAddForm(prev => ({ ...prev, judge_id: response.data.judge.id }));
-        Swal.fire({ icon: 'success', title: 'تمت الإضافة!', text: 'تم إدراج القاضي الجديد بنجاح', timer: 1500, showConfirmButton: false });
+        Swal.fire({ icon: 'success', title: 'تمت الإضافة!', timer: 1500, showConfirmButton: false });
       } catch (error) {
-        Swal.fire({ icon: 'error', title: 'خطأ', text: 'القاضي مسجل بالفعل أو حدث خطأ بالخادم', confirmButtonColor: '#003366' });
+        Swal.fire({ icon: 'error', title: 'خطأ', text: 'حدث خطأ بالخادم', confirmButtonColor: '#003366' });
       }
     }
   };
@@ -185,7 +150,6 @@ export function CoercionFilesModule() {
     e.preventDefault();
     try {
       Swal.fire({ title: 'جاري تحديث الحالة...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-      
       const payload = { status: statusForm.status };
       if (statusForm.status === 'محكوم') {
         payload.return_date = statusForm.return_date;
@@ -194,60 +158,41 @@ export function CoercionFilesModule() {
       } else if (statusForm.status === 'منفذ') {
         payload.collection_date = statusForm.collection_date;
       }
-
       await api.put(`/coercion-files/${statusUpdateFile.id}/status`, payload);
       Swal.fire({ icon: 'success', title: 'تم التحديث بنجاح', timer: 1500, showConfirmButton: false });
       setStatusUpdateFile(null);
       fetchCoercionFiles(); 
     } catch (error) {
-      const msg = error.response?.data?.message || 'فشل تحديث حالة الملف';
-      Swal.fire({ icon: 'error', title: 'خطأ', text: msg, confirmButtonColor: '#003366' });
+      Swal.fire({ icon: 'error', title: 'خطأ', text: 'فشل تحديث حالة الملف', confirmButtonColor: '#003366' });
     }
   };
 
   const getStatusBadge = (status) => {
     switch (status) {
-      case 'في طور':
-        return <span className="px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100 flex items-center gap-1.5 w-fit"><Clock className="w-3.5 h-3.5" />في طور</span>;
-      case 'محكوم':
-        return <span className="px-3 py-1.5 rounded-full bg-purple-50 text-purple-700 text-xs font-bold border border-purple-100 flex items-center gap-1.5 w-fit"><Scale className="w-3.5 h-3.5" />محكوم</span>;
-      case 'منفذ':
-        return <span className="px-3 py-1.5 rounded-full bg-green-50 text-green-700 text-xs font-bold border border-green-100 flex items-center gap-1.5 w-fit"><CheckCircle className="w-3.5 h-3.5" />منفذ</span>;
-      default:
-        return null;
+      case 'في طور': return <span className="px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100 flex items-center gap-1.5 w-fit"><Clock className="w-3.5 h-3.5" />في طور</span>;
+      case 'محكوم': return <span className="px-3 py-1.5 rounded-full bg-purple-50 text-purple-700 text-xs font-bold border border-purple-100 flex items-center gap-1.5 w-fit"><Scale className="w-3.5 h-3.5" />محكوم</span>;
+      case 'منفذ': return <span className="px-3 py-1.5 rounded-full bg-green-50 text-green-700 text-xs font-bold border border-green-100 flex items-center gap-1.5 w-fit"><CheckCircle className="w-3.5 h-3.5" />منفذ</span>;
+      default: return null;
     }
   };
 
   const openStatusUpdate = (file) => {
     setStatusUpdateFile(file);
-    setStatusForm({
-      status: file.status,
-      return_date: file.return_date || '',
-      duration: file.duration || '',
-      amount: file.amount || '',
-      collection_date: file.collection_date || ''
-    });
+    setStatusForm({ status: file.status, return_date: file.return_date || '', duration: file.duration || '', amount: file.amount || '', collection_date: file.collection_date || '' });
   };
 
-  // --- FILTRAGES ---
-  const filteredFiles = coercionFilesValue.filter((file) => {
+  const filteredFiles = coercionFiles.filter((file) => {
     const query = searchQuery.toLowerCase();
-    const matchesSearch = (
-      (file.fileNumber && file.fileNumber.toLowerCase().includes(query)) ||
-      (file.debtorName && file.debtorName.toLowerCase().includes(query))
-    );
+    const matchesSearch = (file.fileNumber && file.fileNumber.toLowerCase().includes(query)) || (file.debtorName && file.debtorName.toLowerCase().includes(query));
     const matchesStatus = statusFilter === 'ALL' || file.status === statusFilter;
     const matchesYear = !yearFilter || (file.registrationDate && file.registrationDate.startsWith(yearFilter));
-
     return matchesSearch && matchesStatus && matchesYear;
   });
 
-  const filteredExcelRegistry = excelFilesValue.filter((file) => {
+  const filteredExcelRegistry = excelFiles.filter((file) => {
     const query = excelSearchQuery.toLowerCase();
-    return (
-      (file.file_number && file.file_number.toLowerCase().includes(query)) ||
-      (file.debtor_name && file.debtor_name.toLowerCase().includes(query))
-    );
+    const debtorMatch = file.debtors_info && file.debtors_info.some(name => name.toLowerCase().includes(query));
+    return (file.file_number && file.file_number.toLowerCase().includes(query)) || debtorMatch;
   });
 
   return (
@@ -264,89 +209,52 @@ export function CoercionFilesModule() {
           </div>
         </div>
 
-        {/* Système d'onglets au niveau de l'en-tête */}
         <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200 shadow-inner">
-          <button 
-            onClick={() => setActiveTab('tracking')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${
-              activeTab === 'tracking' ? 'bg-[#003366] text-white shadow-sm' : 'text-gray-600 hover:text-[#003366]'
-            }`}
-          >
-            <Clock className="w-4 h-4" />
-            <span>المعالجة والتتبع</span>
+          <button onClick={() => setActiveTab('tracking')} className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'tracking' ? 'bg-[#003366] text-white shadow-sm' : 'text-gray-600 hover:text-[#003366]'}`}>
+            <Clock className="w-4 h-4" /> <span>المعالجة والتتبع</span>
           </button>
-          <button 
-            onClick={() => setActiveTab('archive')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${
-              activeTab === 'archive' ? 'bg-[#003366] text-white shadow-sm' : 'text-gray-600 hover:text-[#003366]'
-            }`}
-          >
-            <Database className="w-4 h-4" />
-            <span>أرشيف السجل السنوي (Excel)</span>
+          <button onClick={() => setActiveTab('archive')} className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'archive' ? 'bg-[#003366] text-white shadow-sm' : 'text-gray-600 hover:text-[#003366]'}`}>
+            <Database className="w-4 h-4" /> <span>أرشيف السجل السنوي (Excel)</span>
           </button>
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* 🟢 ONGLET 1 : SUIVI OPÉRATIONNEL & GESTION DES COMPOSANTS */}
-      {/* ========================================================================= */}
+      {/* 🟢 ONGLET 1 : SUIVI OPÉRATIONNEL */}
       {activeTab === 'tracking' && (
         <>
           <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-100 shadow-xs">
             <span className="text-sm font-bold text-gray-500">إدارة الجلسات والملفات المباشرة</span>
-            <button 
-              onClick={() => setIsAddModalOpen(true)}
-              className="flex items-center justify-center gap-2 bg-[#D4AF37] hover:bg-[#c5a028] text-white px-6 py-3 rounded-xl font-bold transition-all shadow-md shadow-[#D4AF37]/20 active:scale-95 text-sm"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>إضافة ملف إكراه بدني</span>
+            <button onClick={() => setIsAddModalOpen(true)} className="flex items-center justify-center gap-2 bg-[#D4AF37] hover:bg-[#c5a028] text-white px-6 py-3 rounded-xl font-bold transition-all shadow-md shadow-[#D4AF37]/20 active:scale-95 text-sm">
+              <UserPlus className="w-4 h-4" /> <span>إضافة ملف إكراه بدني</span>
             </button>
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="relative w-full max-w-2xl">
-                <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  className="block w-full pl-4 pr-12 py-3 bg-[#F8F9FA] border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#003366]/20 focus:border-[#003366] text-gray-900 font-medium text-right"
-                  placeholder="البحث برقم الملف أو اسم المكره..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+                <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+                <input type="text" className="block w-full pl-4 pr-12 py-3 bg-[#F8F9FA] border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#003366]/20 focus:border-[#003366] text-gray-900 font-medium text-right" placeholder="البحث برقم الملف أو اسم المكره..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
               </div>
 
               <div className="flex items-center gap-4 w-full md:w-auto justify-end">
                 <div className="relative w-full md:w-44 shrink-0">
-                  <select
-                    value={yearFilter}
-                    onChange={(e) => setYearFilter(e.target.value)}
-                    className="w-full pr-10 pl-10 py-3 bg-white border-2 border-[#D4AF37] rounded-xl text-sm font-bold text-gray-700 appearance-none text-center cursor-pointer shadow-sm focus:outline-none"
-                  >
+                  <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} className="w-full pr-10 pl-10 py-3 bg-white border-2 border-[#D4AF37] rounded-xl text-sm font-bold text-gray-700 appearance-none text-center cursor-pointer shadow-sm focus:outline-none">
                     <option value="">كل السنوات</option>
-                    {Array.from({ length: 27 }, (_, i) => 2000 + i).reverse().map(year => (
-                      <option key={year} value={year}>سنة {year}</option>
-                    ))}
+                    {Array.from({ length: 27 }, (_, i) => 2000 + i).reverse().map(year => (<option key={year} value={year}>سنة {year}</option>))}
                   </select>
-                  <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-[#D4AF37]"><Calendar className="h-4 w-4" /></div>
-                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-gray-400"><ChevronDown className="h-4 w-4" /></div>
+                  <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#D4AF37] pointer-events-none" />
+                  <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 </div>
 
                 <div className="relative w-full md:w-44 shrink-0">
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full pr-10 pl-10 py-3 bg-white border-2 border-[#D4AF37] rounded-xl text-sm font-bold text-gray-700 appearance-none text-center cursor-pointer shadow-sm focus:outline-none"
-                  >
+                  <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full pr-10 pl-10 py-3 bg-white border-2 border-[#D4AF37] rounded-xl text-sm font-bold text-gray-700 appearance-none text-center cursor-pointer shadow-sm focus:outline-none">
                     <option value="ALL">جميع الحالات</option>
                     <option value="في طور">في طور</option>
                     <option value="محكوم">محكوم</option>
                     <option value="منفذ">منفذ</option>
                   </select>
-                  <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-[#D4AF37]"><Filter className="h-4 w-4" /></div>
-                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-gray-400"><ChevronDown className="h-4 w-4" /></div>
+                  <Filter className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#D4AF37] pointer-events-none" />
+                  <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 </div>
               </div>
             </div>
@@ -368,9 +276,7 @@ export function CoercionFilesModule() {
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
                   {isLoading ? (
-                    <tr>
-                      <td colSpan="6" className="px-6 py-12 text-center"><Loader2 className="w-8 h-8 animate-spin text-[#D4AF37] mx-auto" /></td>
-                    </tr>
+                    <tr><td colSpan="6" className="px-6 py-12 text-center"><Loader2 className="w-8 h-8 animate-spin text-[#D4AF37] mx-auto" /></td></tr>
                   ) : filteredFiles.length > 0 ? (
                     filteredFiles.map((file) => (
                       <tr key={file.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => openStatusUpdate(file)}>
@@ -392,59 +298,42 @@ export function CoercionFilesModule() {
         </>
       )}
 
-      {/* ========================================================================= */}
       {/* 📊 ONGLET 2 : ARCHIVE DU REGISTRE EXCEL ET IMPORTATION COMPLÈTE */}
-      {/* ========================================================================= zone de recherche */}
       {activeTab === 'archive' && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden animate-in fade-in duration-200">
           <div className="p-6 border-b border-gray-100 bg-emerald-600/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-black text-emerald-800 flex items-center gap-2">
-                <FileSpreadsheet className="w-6 h-6 text-emerald-600" />
-                مركز استيراد وأرشيف سجل الإكراه البدني السنوي
+                <FileSpreadsheet className="w-6 h-6 text-emerald-600" /> مركز استيراد وأرشيف سجل الإكراه البدني السنوي
               </h2>
               <p className="text-xs text-gray-500 mt-1">تفريغ السجلات الورقية الضخمة والبحث التاريخي الفوري برقم الملف أو اسم المكره</p>
             </div>
 
-            {/* 🔥 وضع زر الاستيراد والـ Input بداخل نفس التبويب هنا بشكل بارز */}
             <div>
-              <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls" onChange={handleExcelImport} />
-              <button 
-                onClick={() => fileInputRef.current.click()}
-                disabled={isImporting}
-                className="flex items-center gap-2 bg-emerald-600 text-white hover:bg-emerald-700 px-6 py-3.5 rounded-xl font-bold transition-all shadow-md active:scale-95 text-sm"
-              >
-                <FileSpreadsheet className="w-5 h-5 text-white" />
+              <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleExcelImport} />
+              <button onClick={() => fileInputRef.current.click()} disabled={isImporting} className="flex items-center gap-2 bg-emerald-600 text-white hover:bg-emerald-700 px-6 py-3.5 rounded-xl font-bold transition-all shadow-md active:scale-95 text-sm">
+                {isImporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5 text-white" />}
                 <span>تحميل واستيراد ملف Excel جديد</span>
               </button>
             </div>
           </div>
 
-          {/* بار البحث الخاص بملفات الأرشيف الاستيرادي */}
           <div className="p-4 bg-gray-50/50 border-b border-gray-100 flex items-center justify-start">
             <div className="relative w-full max-w-xl">
-              <input 
-                type="text"
-                className="w-full pl-4 pr-10 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none text-right"
-                placeholder="ابحث هنا في الأرشيف المدمج (رقم الملف بالنيابة أو اسم المطلوب إكراهه)..."
-                value={excelSearchQuery}
-                onChange={(e) => setExcelSearchQuery(e.target.value)}
-              />
+              <input type="text" className="w-full pl-4 pr-10 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none text-right" placeholder="ابحث هنا في الأرشيف المدمج (رقم الملف بالنيابة أو اسم المطلوب إكراهه)..." value={excelSearchQuery} onChange={(e) => setExcelSearchQuery(e.target.value)} />
               <Search className="w-5 h-5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
             </div>
             <div className="mr-auto text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-4 py-2.5 rounded-xl">
-              عدد السجلات الكلي بالمخزن: <span className="font-black text-sm">{filteredExcelRegistry.length}</span> سجل مراجع
+              عدد السجلات الكلي بالمخزن: <span className="font-black text-sm">{filteredExcelRegistry.length}</span> ملف
             </div>
           </div>
 
-          {/* جدول عرض السجل مع العمود الجديد مصدر الطلب */}
           <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
             <table className="min-w-full divide-y divide-gray-100 text-right text-xs">
               <thead className="bg-gray-800 text-white font-bold border-b border-gray-900 sticky top-0 z-10 shadow-xs">
                 <tr>
                   <th className="px-6 py-4 text-sm">تاريخ التسجيل</th>
                   <th className="px-6 py-4 text-sm">رقم الملف بالنيابة</th>
-                  {/* العمود الجديد المضاف بناءً على طلبك */}
                   <th className="px-6 py-4 text-sm bg-emerald-700 text-white font-black">مصدر طلب الإكراه</th>
                   <th className="px-6 py-4 text-sm">الإسم الكامل للمكره عليه ومحل سكنه</th>
                   <th className="px-6 py-4 text-sm">المبلغ المطلوب أداؤه (درهم)</th>
@@ -452,22 +341,31 @@ export function CoercionFilesModule() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
-                {filteredExcelRegistry.length > 0 ? (
+                {isLoading ? (
+                    <tr><td colSpan="6" className="px-6 py-12 text-center"><Loader2 className="w-8 h-8 animate-spin text-[#D4AF37] mx-auto" /></td></tr>
+                ) : filteredExcelRegistry.length > 0 ? (
                   filteredExcelRegistry.map((row, i) => (
                     <tr key={i} className="hover:bg-emerald-50/30 transition-colors font-medium">
-                      <td className="px-6 py-3.5 text-gray-500 font-mono">{row.registration_date || '-'}</td>
-                      <td className="px-6 py-3.5 text-emerald-700 font-black text-sm">{row.file_number}</td>
-                      {/* محتوى العمود الجديد المربوط بالقاعدة */}
-                      <td className="px-6 py-3.5 bg-emerald-50/30 font-bold text-emerald-800 text-sm">{row.coercion_source || '-'}</td>
-                      <td className="px-6 py-3.5 text-gray-900 whitespace-pre-line leading-relaxed max-w-xs">{row.debtor_name}</td>
-                      <td className="px-6 py-3.5 text-red-600 font-mono font-bold text-sm">{(row.amount || 0).toLocaleString('fr-FR')}</td>
-                      <td className="px-6 py-3.5 text-gray-700 font-bold">{row.judge_name || '-'}</td>
+                      <td className="px-6 py-3.5 text-gray-500 font-mono align-top">{row.registration_date || '-'}</td>
+                      <td className="px-6 py-3.5 text-emerald-700 font-black text-sm align-top">{row.file_number}</td>
+                      <td className="px-6 py-3.5 bg-emerald-50/30 font-bold text-emerald-800 text-sm align-top">{row.coercion_source || '-'}</td>
+                      <td className="px-6 py-3.5 align-top">
+                        <div className="flex flex-col gap-2">
+                          {(row.debtors_info || []).map((name, pIndex) => (
+                            <span key={pIndex} className="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-bold bg-[#003366]/5 text-[#003366] border border-[#003366]/10 w-fit shadow-sm">
+                              {name}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-6 py-3.5 text-red-600 font-mono font-bold text-sm align-top">{(Number(row.amount) || 0).toLocaleString('fr-FR')}</td>
+                      <td className="px-6 py-3.5 text-gray-700 font-bold align-top">{row.judge_name || '-'}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
                     <td colSpan="6" className="px-6 py-16 text-center text-gray-400 font-bold text-sm">
-                      {excelFilesValue.length === 0 ? 'لا توجد بيانات مستوردة في هذا القسم بعد. المرجو الضغط على الزر في الأعلى واختيار ملف المرجع للبدء.' : 'لم نجد أي نتائج تطابق هذا الاسم أو الرقم في الأرشيف المرجعي.'}
+                      {excelFiles.length === 0 ? 'لا توجد بيانات مستوردة في هذا القسم بعد. المرجو الضغط على الزر في الأعلى واختيار ملف المرجع للبدء.' : 'لم نجد أي نتائج تطابق هذا الاسم أو الرقم في الأرشيف المرجعي.'}
                     </td>
                   </tr>
                 )}
