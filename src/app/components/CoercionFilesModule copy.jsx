@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Gavel, UserPlus, Search, X, Calendar, User, FileText, CreditCard, ChevronDown, CheckCircle, Clock, Scale, Loader2, Plus, Filter, FileSpreadsheet, Database, Download, MapPin, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Gavel, UserPlus, Search, X, Calendar, User, FileText, CreditCard, ChevronDown, CheckCircle, Clock, Scale, Loader2, Plus, Filter, FileSpreadsheet, Database, Download } from 'lucide-react';
 import Swal from 'sweetalert2';
 import api from '../api/axios'; 
 import ExcelJS from 'exceljs';
@@ -17,11 +17,6 @@ export function CoercionFilesModule() {
   const [yearFilter, setYearFilter] = useState(''); 
   const [isLoading, setIsLoading] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
-
-  // 🔥 حالات الـ Pagination الجديدة للجدولين
-  const [trackingPage, setTrackingPage] = useState(1);
-  const [archivePage, setArchivePage] = useState(1);
-  const ITEMS_PER_PAGE = 10; // عدد الأسطر في كل صفحة
 
   const fileInputRef = useRef(null);
 
@@ -47,10 +42,6 @@ export function CoercionFilesModule() {
   useEffect(() => {
     loadInitialData();
   }, []);
-
-  // إعادة ضبط الصفحات عند تغيير شروط الفلترة أو البحث
-  useEffect(() => { setTrackingPage(1); }, [searchQuery, statusFilter, yearFilter]);
-  useEffect(() => { setArchivePage(1); }, [excelSearchQuery]);
 
   const loadInitialData = async () => {
     try {
@@ -206,15 +197,6 @@ export function CoercionFilesModule() {
     return (file.file_number && file.file_number.toLowerCase().includes(query)) || debtorMatch;
   });
 
-  // 🔥 منطق الاستقطاع للصفحات (Pagination Logic) للجدولين
-  const trackingTotalPages = Math.ceil(filteredFiles.length / ITEMS_PER_PAGE);
-  const trackingStartIndex = (trackingPage - 1) * ITEMS_PER_PAGE;
-  const paginatedTrackingFiles = filteredFiles.slice(trackingStartIndex, trackingStartIndex + ITEMS_PER_PAGE);
-
-  const archiveTotalPages = Math.ceil(filteredExcelRegistry.length / ITEMS_PER_PAGE);
-  const archiveStartIndex = (archivePage - 1) * ITEMS_PER_PAGE;
-  const paginatedArchiveFiles = filteredExcelRegistry.slice(archiveStartIndex, archiveStartIndex + ITEMS_PER_PAGE);
-
   const handleExportExcel = async () => {
     if (filteredFiles.length === 0) {
       Swal.fire({ icon: 'warning', title: 'لا توجد بيانات', text: 'لا توجد ملفات للتصدير تطابق شروط البحث الحالية', confirmButtonColor: '#D4AF37' });
@@ -291,6 +273,7 @@ export function CoercionFilesModule() {
   };
 
   return (
+    // 🔥 الحاوية الرئيسية أصبحت بطاقة بيضاء موحدة ممتدة بدون أي فواصل خارجية
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col" dir="rtl">
       
       {/* 1. قسم الهيدر الأساسي في أعلى البطاقة */}
@@ -310,7 +293,7 @@ export function CoercionFilesModule() {
             <Clock className="w-4 h-4" /> <span>المعالجة والتتبع</span>
           </button>
           <button onClick={() => setActiveTab('archive')} className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'archive' ? 'bg-[#003366] text-white shadow-sm' : 'text-gray-600 hover:text-[#003366]'}`}>
-            <Database className="w-4 h-4" /> <span> سجل الأرشيف السنوي</span>
+            <Database className="w-4 h-4" /> <span>أرشيف السجل السنوي (Excel)</span>
           </button>
         </div>
       </div>
@@ -318,6 +301,7 @@ export function CoercionFilesModule() {
       {/* 🟢 محتوى التبويب الأول: المعالجة والتتبع */}
       {activeTab === 'tracking' && (
         <>
+          {/* شريط الإجراءات والبحث الفوري متصل مباشرة بالبطاقة وبدون فواصل */}
           <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-white">
             <div className="relative w-full max-w-xl">
               <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
@@ -326,7 +310,7 @@ export function CoercionFilesModule() {
 
             <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
               <div className="relative w-36 shrink-0">
-                <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} className="w-full pr-10 pl-5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 appearance-none text-center cursor-pointer shadow-xs focus:outline-none focus:ring-2 focus:ring-[#D4AF37]">
+                <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} className="w-full pr-10 pl-8 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 appearance-none text-center cursor-pointer shadow-xs focus:outline-none focus:ring-2 focus:ring-[#D4AF37]">
                   <option value="">كل السنوات</option>
                   {Array.from({ length: 27 }, (_, i) => 2000 + i).reverse().map(year => (<option key={year} value={year}>سنة {year}</option>))}
                 </select>
@@ -355,6 +339,7 @@ export function CoercionFilesModule() {
             </div>
           </div>
 
+          {/* جدول عرض البيانات المباشر مدمج كلياً داخل البطاقة الموحدة */}
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 text-right">
               <thead className="bg-[#003366]/5 text-[#003366] font-bold border-b border-[#003366]/10">
@@ -370,15 +355,15 @@ export function CoercionFilesModule() {
               <tbody className="divide-y divide-gray-100 bg-white">
                 {isLoading ? (
                   <tr><td colSpan="6" className="px-6 py-12 text-center"><Loader2 className="w-8 h-8 animate-spin text-[#D4AF37] mx-auto" /></td></tr>
-                ) : paginatedTrackingFiles.length > 0 ? (
-                  paginatedTrackingFiles.map((file) => (
-                    <tr key={file.id} className="hover:bg-blue-50/30 transition-colors" >
+                ) : filteredFiles.length > 0 ? (
+                  filteredFiles.map((file) => (
+                    <tr key={file.id} className="hover:bg-blue-50/30 transition-colors cursor-pointer" onClick={() => openStatusUpdate(file)}>
                       <td className="px-6 py-4 text-sm text-gray-600 font-medium">{file.registrationDate}</td>
                       <td className="px-6 py-4 font-black text-[#003366]">{file.fileNumber}</td>
                       <td className="px-6 py-4 font-bold text-gray-900">{file.debtorName}</td>
                       <td className="px-6 py-4 font-bold text-red-600 font-mono">{file.amount.toLocaleString('fr-FR')}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{file.judge}</td>
-                      <td className="px-6 py-4 cursor-pointer" onClick={() => openStatusUpdate(file)}>{getStatusBadge(file.status)}</td>
+                      <td className="px-6 py-4">{getStatusBadge(file.status)}</td>
                     </tr>
                   ))
                 ) : (
@@ -387,59 +372,32 @@ export function CoercionFilesModule() {
               </tbody>
             </table>
           </div>
-
-          {/* 🔥 عناصر تحكم الـ Pagination لجدول التتبع */}
-          {!isLoading && filteredFiles.length > 0 && (
-            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/40">
-              <span className="text-sm text-gray-500 font-medium">
-                عرض سجلات من <span className="font-bold text-gray-700">{trackingStartIndex + 1}</span> إلى <span className="font-bold text-gray-700">{Math.min(trackingStartIndex + ITEMS_PER_PAGE, filteredFiles.length)}</span> من أصل <span className="font-bold text-gray-700">{filteredFiles.length}</span> ملف
-              </span>
-              <div className="flex items-center gap-2">
-                <button disabled={trackingPage === 1} onClick={() => setTrackingPage(prev => Math.max(prev - 1, 1))} className="p-2 rounded-xl border bg-white disabled:opacity-30 shadow-xs hover:bg-gray-50 transition-all">
-                  <ChevronRight className="w-5 h-5 text-[#003366]" />
-                </button>
-                <div className="flex gap-1">
-                  {[...Array(trackingTotalPages)].map((_, idx) => {
-                    const pageNum = idx + 1;
-                    if (pageNum === 1 || pageNum === trackingTotalPages || (pageNum >= trackingPage - 1 && pageNum <= trackingPage + 1)) {
-                      return (
-                        <button key={pageNum} onClick={() => setTrackingPage(pageNum)} className={`w-8 h-8 rounded-lg font-bold text-xs transition-all ${trackingPage === pageNum ? 'bg-[#003366] text-[#D4AF37] shadow-md' : 'bg-white border text-gray-500 hover:bg-gray-50'}`}>{pageNum}</button>
-                      );
-                    } else if (pageNum === 2 || pageNum === trackingTotalPages - 1) {
-                      return <span key={pageNum} className="text-gray-400 px-1">...</span>;
-                    } return null;
-                  })}
-                </div>
-                <button disabled={trackingPage === trackingTotalPages} onClick={() => setTrackingPage(prev => Math.min(prev + 1, trackingTotalPages))} className="p-2 rounded-xl border bg-white disabled:opacity-30 shadow-xs hover:bg-gray-50 transition-all">
-                  <ChevronLeft className="w-5 h-5 text-[#003366]" />
-                </button>
-              </div>
-            </div>
-          )}
         </>
       )}
 
       {/* 📊 محتوى التبويب الثاني: الأرشيف السنوي */}
       {activeTab === 'archive' && (
         <>
+          {/* بار التحكم والاستيراد المخصص للأرشيف مدمج كلياً */}
           <div className="p-4 bg-emerald-600/5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-lg font-black text-emerald-800 flex items-center gap-2">
-                <FileSpreadsheet className="w-5 h-5 text-emerald-600" /> أرشيف سجل الإكراه البدني السنوي 
+                <FileSpreadsheet className="w-5 h-5 text-emerald-600" /> أرشيف سجل الإكراه البدني السنوي المدمج
               </h2>
             </div>
             <div>
               <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleExcelImport} />
               <button onClick={() => fileInputRef.current.click()} disabled={isImporting} className="flex items-center gap-2 bg-emerald-600 text-white hover:bg-emerald-700 px-5 py-2.5 rounded-xl font-bold transition-all shadow-xs active:scale-95 text-sm">
                 {isImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4 text-white" />}
-                <span>   وضع سجل الاكراه البدني</span>
+                <span>استيراد ملف إكسيل جديد</span>
               </button>
             </div>
           </div>
 
+          {/* بار البحث الخاص بالأرشيف */}
           <div className="p-4 bg-gray-50/50 border-b border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="relative w-full max-w-xl">
-              <input type="text" className="w-full pl-4 pr-10 py-2.5 bg-white border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none text-right" placeholder="ابحث هنا في أرشيف الاكراه البدني ..." value={excelSearchQuery} onChange={(e) => setExcelSearchQuery(e.target.value)} />
+              <input type="text" className="w-full pl-4 pr-10 py-2.5 bg-white border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none text-right" placeholder="ابحث هنا في الأرشيف التاريخي المدمج..." value={excelSearchQuery} onChange={(e) => setExcelSearchQuery(e.target.value)} />
               <Search className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
             </div>
             <div className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-xl">
@@ -447,94 +405,53 @@ export function CoercionFilesModule() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* جدول عرض الأرشيف المستورد */}
+          <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
             <table className="min-w-full divide-y divide-gray-100 text-right text-xs">
-              <thead className="bg-gray-800 text-white font-bold border-b border-gray-900 sticky top-0 z-10">
+              <thead className="bg-gray-800 text-white font-bold sticky top-0 z-10">
                 <tr>
-                  <th className="px-6 py-4 text-sm w-[12%]">تاريخ التسجيل</th>
-                  <th className="px-6 py-4 text-sm w-[15%]">رقم الملف بالنيابة</th>
-                  <th className="px-6 py-4 text-sm w-[15%] bg-emerald-700 text-white">مصدر طلب الإكراه</th>
-                  <th className="px-6 py-4 text-sm w-[35%]">الإسم الكامل للمكره عليه ومحل سكنه</th>
-                  <th className="px-6 py-4 text-sm w-[13%]">المبلغ المطلوب أداؤه (درهم)</th>
-                  <th className="px-6 py-4 text-sm w-[10%]">القاضي المقرر</th>
+                  <th className="px-6 py-4 text-sm">تاريخ التسجيل</th>
+                  <th className="px-6 py-4 text-sm">رقم الملف بالنيابة</th>
+                  <th className="px-6 py-4 text-sm bg-emerald-700 text-white">مصدر طلب الإكراه</th>
+                  <th className="px-6 py-4 text-sm">الإسم الكامل للمكره عليه ومحل سكنه</th>
+                  <th className="px-6 py-4 text-sm">المبلغ المطلوب أداؤه (درهم)</th>
+                  <th className="px-6 py-4 text-sm">القاضي المقرر</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
-                {isLoading ? (
-                  <tr><td colSpan="6" className="px-6 py-12 text-center"><Loader2 className="w-8 h-8 animate-spin text-[#D4AF37] mx-auto" /></td></tr>
-                ) : paginatedArchiveFiles.length > 0 ? (
-                  paginatedArchiveFiles.map((row, i) => (
-                    <tr key={i} className="hover:bg-emerald-50/20 transition-colors font-medium">
-                      <td className="px-6 py-4 text-gray-500 font-mono align-top">{row.registration_date || '-'}</td>
-                      <td className="px-6 py-4 text-emerald-700 font-black text-sm align-top">{row.file_number}</td>
-                      <td className="px-6 py-4 bg-emerald-50/30 font-bold text-emerald-800 text-sm align-top">{row.coercion_source || '-'}</td>
-                      
-                      <td className="px-6 py-4 align-top">
+                {filteredExcelRegistry.length > 0 ? (
+                  filteredExcelRegistry.map((row, i) => (
+                    <tr key={i} className="hover:bg-emerald-50/30 transition-colors font-medium">
+                      <td className="px-6 py-3.5 text-gray-500 font-mono align-top">{row.registration_date || '-'}</td>
+                      <td className="px-6 py-3.5 text-emerald-700 font-black text-sm align-top">{row.file_number}</td>
+                      <td className="px-6 py-3.5 bg-emerald-50/30 font-bold text-emerald-800 text-sm align-top">{row.coercion_source || '-'}</td>
+                      <td className="px-6 py-3.5 align-top">
                         <div className="flex flex-col gap-2">
-                          {(row.debtors_info || []).map((infoText, pIndex) => {
-                            const isAddress = infoText.includes("حي") || infoText.includes("زنقة") || infoText.includes("رقم") || infoText.includes("طنجة") || infoText.includes("بونك");
-                            return (
-                              <div key={pIndex} className={`p-2.5 border rounded-xl flex items-center gap-2 shadow-xs max-w-sm font-medium ${isAddress ? "bg-emerald-50/40 border-emerald-100 text-emerald-800 text-xs" : "bg-[#003366]/5 border-[#003366]/10 text-[#003366] text-sm font-bold"}`}>
-                                {isAddress ? (
-                                  <>
-                                    <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                    <span >{infoText}</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <User className="w-4 h-4 text-[#D4AF37] shrink-0" />
-                                    <span>{infoText}</span>
-                                  </>
-                                )}
-                              </div>
-                            );
-                          })}
+                          {(row.debtors_info || []).map((name, pIndex) => (
+                            <span key={pIndex} className="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-bold bg-[#003366]/5 text-[#003366] border border-[#003366]/10 w-fit shadow-xs">
+                              {name}
+                            </span>
+                          ))}
                         </div>
                       </td>
-                      
-                      <td className="px-6 py-4 text-red-600 font-mono font-bold text-sm align-top">{(Number(row.amount) || 0).toLocaleString('fr-FR')}</td>
-                      <td className="px-6 py-4 text-gray-700 font-bold align-top">{row.judge_name || '-'}</td>
+                      <td className="px-6 py-3.5 text-red-600 font-mono font-bold text-sm align-top">{(Number(row.amount) || 0).toLocaleString('fr-FR')}</td>
+                      <td className="px-6 py-3.5 text-gray-700 font-bold align-top">{row.judge_name || '-'}</td>
                     </tr>
                   ))
                 ) : (
-                  <tr><td colSpan="6" className="px-6 py-16 text-center text-gray-400 font-bold text-sm">لم نجد أي نتائج تطابق هذا الاسم أو الرقم في الأرشيف المرجعي.</td></tr>
+                  <tr>
+                    <td colSpan="6" className="px-6 py-16 text-center text-gray-400 font-bold text-sm">
+                      {excelFiles.length === 0 ? 'لا توجد بيانات مستوردة في هذا القسم بعد. المرجو الضغط على زر الاستيراد للبدء.' : 'لم نجد أي نتائج تطابق هذا الاسم أو الرقم في الأرشيف المرجعي.'}
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
           </div>
-
-          {/* 🔥 عناصر تحكم الـ Pagination لجدول الأرشيف السنوي */}
-          {!isLoading && filteredExcelRegistry.length > 0 && (
-            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/40">
-              <span className="text-sm text-gray-500 font-medium">
-                عرض سجلات من <span className="font-bold text-gray-700">{archiveStartIndex + 1}</span> إلى <span className="font-bold text-gray-700">{Math.min(archiveStartIndex + ITEMS_PER_PAGE, filteredExcelRegistry.length)}</span> من أصل <span className="font-bold text-gray-700">{filteredExcelRegistry.length}</span> ملف تاريخي
-              </span>
-              <div className="flex items-center gap-2">
-                <button disabled={archivePage === 1} onClick={() => setArchivePage(prev => Math.max(prev - 1, 1))} className="p-2 rounded-xl border bg-white disabled:opacity-30 shadow-xs hover:bg-gray-50 transition-all">
-                  <ChevronRight className="w-5 h-5 text-[#003366]" />
-                </button>
-                <div className="flex gap-1">
-                  {[...Array(archiveTotalPages)].map((_, idx) => {
-                    const pageNum = idx + 1;
-                    if (pageNum === 1 || pageNum === archiveTotalPages || (pageNum >= archivePage - 1 && pageNum <= archivePage + 1)) {
-                      return (
-                        <button key={pageNum} onClick={() => setArchivePage(pageNum)} className={`w-8 h-8 rounded-lg font-bold text-xs transition-all ${archivePage === pageNum ? 'bg-[#003366] text-[#D4AF37] shadow-md' : 'bg-white border text-gray-500 hover:bg-gray-50'}`}>{pageNum}</button>
-                      );
-                    } else if (pageNum === 2 || pageNum === archiveTotalPages - 1) {
-                      return <span key={pageNum} className="text-gray-400 px-1">...</span>;
-                    } return null;
-                  })}
-                </div>
-                <button disabled={archivePage === archiveTotalPages} onClick={() => setArchivePage(prev => Math.min(prev + 1, archiveTotalPages))} className="p-2 rounded-xl border bg-white disabled:opacity-30 shadow-xs hover:bg-gray-50 transition-all">
-                  <ChevronLeft className="w-5 h-5 text-[#003366]" />
-                </button>
-              </div>
-            </div>
-          )}
         </>
       )}
 
-      {/* MODAL 1: إضافة ملف جديد */}
+      {/* 🏛️ MODAL 1: إضافة ملف جديد */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
@@ -585,7 +502,7 @@ export function CoercionFilesModule() {
         </div>
       )}
 
-      {/* MODAL 2: تحديث حالة الملف */}
+      {/* 🏛️ MODAL 2: تحديث حالة الملف */}
       {statusUpdateFile && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
