@@ -157,26 +157,36 @@ export function CoercionFilesModule() {
     }
   };
 
-  const handleStatusUpdateSubmit = async (e) => {
+ const handleStatusUpdateSubmit = async (e) => {
     e.preventDefault();
     try {
-      Swal.fire({ title: 'جاري تحديث الحالة...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-      const payload = { status: statusForm.status };
-      if (statusForm.status === 'محكوم') {
-        payload.return_date = statusForm.return_date;
-        payload.duration = statusForm.duration;
-        payload.amount = statusForm.amount;
-      } else if (statusForm.status === 'منفذ') {
-        payload.collection_date = statusForm.collection_date;
-      }
-      await api.put(`/coercion-files/${statusUpdateFile.id}/status`, payload);
-      Swal.fire({ icon: 'success', title: 'تم التحديث بنجاح', timer: 1500, showConfirmButton: false });
-      setStatusUpdateFile(null);
-      fetchCoercionFiles(); 
+        Swal.fire({ title: 'جاري تحديث الحالة...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        
+        const payload = { status: statusForm.status };
+        
+        if (statusForm.status === 'محكوم') {
+            payload.return_date = statusForm.return_date;
+            payload.duration = statusForm.duration;
+            payload.amount = statusForm.amount;
+        } else if (statusForm.status === 'منفذ') {
+            payload.collection_date = statusForm.collection_date;
+        }
+
+        // --- LA MODIFICATION EST ICI ---
+        // 1. On ajoute le paramètre magique pour Laravel
+        payload._method = 'PUT';
+
+        // 2. On change api.put en api.post
+        await api.post(`/coercion-files/${statusUpdateFile.id}/status`, payload);
+        // -------------------------------
+
+        Swal.fire({ icon: 'success', title: 'تم التحديث بنجاح', timer: 1500, showConfirmButton: false });
+        setStatusUpdateFile(null);
+        fetchCoercionFiles(); 
     } catch (error) {
-      Swal.fire({ icon: 'error', title: 'خطأ', text: 'فشل تحديث حالة الملف', confirmButtonColor: '#003366' });
+        Swal.fire({ icon: 'error', title: 'خطأ', text: 'فشل تحديث حالة الملف', confirmButtonColor: '#003366' });
     }
-  };
+};
 
   const getStatusBadge = (status) => {
     switch (status) {

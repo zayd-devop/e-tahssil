@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // On pointe vers la variable d'environnement, avec 8000 par défaut
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://10.60.26.80:8000/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -29,8 +29,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response && error.response.status === 401) {
       sessionStorage.clear();
-      localStorage.clear();
-      window.location.href = '/login'; 
+      localStorage.clear(); 
     }
     return Promise.reject(error);
   }
