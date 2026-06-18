@@ -186,9 +186,9 @@ export function KPICards() {
 
         {/* --- Top Section - Quick Monthly KPIs --- */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col relative overflow-hidden group hover:shadow-md transition-shadow">
-            <div className="absolute top-0 right-0 w-1.5 h-full bg-[#003366]"></div>
-            <div className="flex justify-between items-start mb-4">
+          <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl shadow-[#003366]/5 border border-white p-6 flex flex-col relative overflow-hidden group hover:shadow-2xl hover:shadow-[#003366]/10 transition-all duration-300 transform hover:-translate-y-1">
+            <div className="absolute top-0 right-0 w-1.5 h-full bg-[#003366] shadow-[0_0_15px_rgba(0,51,102,0.5)]"></div>
+            <div className="flex justify-between items-start mb-4 relative z-10">
               <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-[#003366]">
                 <Wallet className="w-6 h-6" />
               </div>
@@ -199,9 +199,9 @@ export function KPICards() {
             </p>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col relative overflow-hidden hover:shadow-md transition-shadow">
-            <div className="absolute top-0 right-0 w-1.5 h-full bg-[#D4AF37]"></div>
-            <div className="flex justify-between items-start mb-4">
+          <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl shadow-[#003366]/5 border border-white p-6 flex flex-col relative overflow-hidden group hover:shadow-2xl hover:shadow-[#003366]/10 transition-all duration-300 transform hover:-translate-y-1">
+            <div className="absolute top-0 right-0 w-1.5 h-full bg-[#D4AF37] shadow-[0_0_15px_rgba(212,175,55,0.5)]"></div>
+            <div className="flex justify-between items-start mb-4 relative z-10">
               <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-[#D4AF37]">
                 <FileSpreadsheet className="w-6 h-6" />
               </div>
@@ -212,9 +212,9 @@ export function KPICards() {
             </p>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col relative overflow-hidden hover:shadow-md transition-shadow">
-            <div className="absolute top-0 right-0 w-1.5 h-full bg-emerald-500"></div>
-            <div className="flex justify-between items-start mb-4">
+          <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl shadow-[#003366]/5 border border-white p-6 flex flex-col relative overflow-hidden group hover:shadow-2xl hover:shadow-[#003366]/10 transition-all duration-300 transform hover:-translate-y-1">
+            <div className="absolute top-0 right-0 w-1.5 h-full bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
+            <div className="flex justify-between items-start mb-4 relative z-10">
               <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
                 <Send className="w-6 h-6" />
               </div>
@@ -225,8 +225,8 @@ export function KPICards() {
             </p>
           </div>
 
-          <div className="bg-gradient-to-br from-[#003366] to-[#001f3f] rounded-2xl shadow-sm border border-[#002244] p-6 flex flex-col relative overflow-hidden text-white">
-            <div className="absolute -right-4 -top-4 opacity-10">
+          <div className="bg-gradient-to-br from-[#002244] to-[#003366] rounded-3xl shadow-[0_10px_30px_rgba(0,51,102,0.3)] border border-white/10 p-6 flex flex-col relative overflow-hidden text-white group hover:shadow-[0_15px_40px_rgba(0,51,102,0.4)] transition-all duration-300 transform hover:-translate-y-1">
+            <div className="absolute -right-4 -top-4 opacity-10 transform transition-transform group-hover:scale-110 duration-500">
               <Trophy className="w-32 h-32" />
             </div>
             <div className="flex justify-between items-start mb-4 relative z-10">
@@ -248,7 +248,7 @@ export function KPICards() {
 
         {/* --- Middle Section - Monthly Evolution Charts --- */}
         <div className="flex flex-col lg:flex-row gap-6">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:w-[60%] flex flex-col">
+          <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl shadow-[#003366]/5 border border-white p-7 lg:w-[60%] flex flex-col transition-all duration-300 hover:shadow-[#003366]/10">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold text-[#003366]">تطور التحصيل الشهري</h2>
               <div className="flex items-center gap-4 text-sm font-medium">
@@ -281,7 +281,7 @@ export function KPICards() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:w-[40%] flex flex-col">
+          <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl shadow-[#003366]/5 border border-white p-7 lg:w-[40%] flex flex-col transition-all duration-300 hover:shadow-[#003366]/10">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold text-[#003366]">تطور التبليغ الشهري</h2>
             </div>
@@ -302,7 +302,7 @@ export function KPICards() {
         </div>
 
         {/* --- 🛑 🔥 NOUVELLE SECTION : إحصائيات ملفات الإكراه البدني حسب الحالة --- */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl shadow-[#003366]/5 border border-white p-7 transition-all duration-300 hover:shadow-[#003366]/10">
           <div className="flex items-center gap-3 mb-6 border-b border-gray-100 pb-4">
             <div className="w-10 h-10 bg-[#003366]/5 rounded-xl flex items-center justify-center text-[#003366]">
               <Gavel className="w-5 h-5" />
@@ -374,7 +374,7 @@ export function KPICards() {
         </div>
 
         {/* 3. Middle-Lower Section - Productivity (Doughnut Chart avec Filtre) */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 relative overflow-hidden">
+        <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl shadow-[#003366]/5 border border-white p-7 relative overflow-hidden transition-all duration-300 hover:shadow-[#003366]/10">
           
           {isLoading && dashboardData && (
             <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-20 flex items-center justify-center">
@@ -477,7 +477,7 @@ export function KPICards() {
         </div>
 
         {/* --- Bottom Section - Detailed Clerk Performance Table --- */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative">
+        <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl shadow-[#003366]/5 border border-white overflow-hidden relative transition-all duration-300 hover:shadow-[#003366]/10">
           
           {isLoading && dashboardData && (
             <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-20 flex items-center justify-center">
@@ -510,7 +510,7 @@ export function KPICards() {
                 ))}
               </select>
 
-              <button className="flex items-center gap-2 px-4 py-2 bg-[#003366]/5 border border-[#003366]/10 text-[#003366] rounded-xl text-sm font-bold hover:bg-[#003366]/10 transition-colors"
+              <button className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#003366] to-[#002244] border-0 text-white rounded-xl text-sm font-bold shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all"
               onClick={handleExportExcel}>
                 <TrendingUp className="w-4 h-4" />
                 <span>تصدير التقرير</span>

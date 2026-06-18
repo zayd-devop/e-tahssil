@@ -22,9 +22,11 @@ export function OutstandingDebtsModule() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
 
-  // États pour la pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
+  
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Revenir à la page 1 quand on change de recherche, d'année ou d'onglet
   useEffect(() => {
@@ -38,30 +40,42 @@ export function OutstandingDebtsModule() {
     return 'outstanding-debts'; 
   };
 
-  // 🔥 2. CORRECTION : GET avec Axios
   const fetchDebts = async () => {
     try {
       setIsLoading(true);
       
+      const params = {
+        page: currentPage,
+        search: searchQuery,
+      };
+
+      if (selectedYear) {
+        params.year = selectedYear;
+      }
+
       // Axios s'occupe de l'URL de base et du Token
-      const response = await api.get(`/${getApiEndpoint()}?year=${selectedYear}`);
+      const response = await api.get(`/${getApiEndpoint()}`, { params });
       
-      // Les données sont directement dans response.data
-      setData(response.data);
+      // Les données paginées
+      setData(response.data.data || []);
+      setTotalItems(response.data.total || 0);
+      setTotalPages(response.data.last_page || 1);
       setError(null);
     } catch (err) {
       console.error("Erreur lors de la récupération des données:", err);
       setError("تعذر تحميل البيانات. يرجى التحقق من الخادم.");
       setData([]); // On vide les données en cas d'erreur
+      setTotalItems(0);
+      setTotalPages(1);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Recharger les données dès que l'année OU l'onglet change
+  // Recharger les données dès que les filtres ou la page changent
   useEffect(() => {
     fetchDebts();
-  }, [selectedYear, activeTab]);
+  }, [selectedYear, activeTab, currentPage, searchQuery]);
 
   // 🔥 3. CORRECTION : POST avec Axios pour FormData
   const handleFileUpload = async (event) => {
@@ -135,49 +149,30 @@ export function OutstandingDebtsModule() {
     fileInputRef.current.click();
   };
 
-  // Logique de filtrage ultra-synchronisée (Année + Recherche)
-  const filteredData = data.filter((row) => {
-    const yearMatch = !selectedYear || 
-                      String(row.file_year) === String(selectedYear) || 
-                      (row.collectionFileNumber && String(row.collectionFileNumber).includes(String(selectedYear)));
-    
-    const query = searchQuery.toLowerCase();
-    const nameMatch = row.fullName ? row.fullName.toLowerCase().includes(query) : false;
-    const numberMatch = row.collectionFileNumber ? row.collectionFileNumber.toLowerCase().includes(query) : false;
-    
-    const searchMatch = !searchQuery || nameMatch || numberMatch;
-
-    return yearMatch && searchMatch;
-  });
-
-  // Logique mathématique de la pagination
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
+  const currentItems = data;
 
   return (
-    <div className="bg-gray-50/50 min-h-full font-sans" dir="rtl">
+    <div className="bg-transparent min-h-full font-sans" dir="rtl">
       <div className="max-w-[1400px] mx-auto space-y-6">
         
         {/* Navigation par onglets */}
         <div className="flex justify-center mb-8">
-          <div className="bg-white p-1 rounded-full shadow-sm border border-gray-200 inline-flex">
-            <button onClick={() => setActiveTab('outstanding')} className={`px-8 py-2.5 rounded-full text-sm font-bold transition-all ${activeTab === 'outstanding' ? 'bg-[#003366] text-white shadow-md' : 'bg-transparent text-[#003366] hover:bg-gray-50'}`}>الباقي بدون تحصيل</button>
-            <button onClick={() => setActiveTab('supplementary')} className={`px-8 py-2.5 rounded-full text-sm font-bold transition-all ${activeTab === 'supplementary' ? 'bg-[#003366] text-white shadow-md' : 'bg-transparent text-[#003366] hover:bg-gray-50'}`}>الرسوم التكميلية</button>
-            <button onClick={() => setActiveTab('judicial_assistance')} className={`px-8 py-2.5 rounded-full text-sm font-bold transition-all ${activeTab === 'judicial_assistance' ? 'bg-[#003366] text-white shadow-md' : 'bg-transparent text-[#003366] hover:bg-gray-50'}`}>صوائر المساعدة القضائية</button>
+          <div className="bg-white/90 backdrop-blur-xl p-1.5 rounded-full shadow-lg shadow-[#003366]/5 border border-white inline-flex">
+            <button onClick={() => setActiveTab('outstanding')} className={`px-8 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${activeTab === 'outstanding' ? 'bg-gradient-to-r from-[#003366] to-[#002244] text-white shadow-md' : 'bg-transparent text-[#003366] hover:bg-[#003366]/5'}`}>الباقي بدون تحصيل</button>
+            <button onClick={() => setActiveTab('supplementary')} className={`px-8 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${activeTab === 'supplementary' ? 'bg-gradient-to-r from-[#003366] to-[#002244] text-white shadow-md' : 'bg-transparent text-[#003366] hover:bg-[#003366]/5'}`}>الرسوم التكميلية</button>
+            <button onClick={() => setActiveTab('judicial_assistance')} className={`px-8 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${activeTab === 'judicial_assistance' ? 'bg-gradient-to-r from-[#003366] to-[#002244] text-white shadow-md' : 'bg-transparent text-[#003366] hover:bg-[#003366]/5'}`}>صوائر المساعدة القضائية</button>
           </div>
         </div>
 
         {/* Barre d'actions */}
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-4 bg-white/90 backdrop-blur-xl p-5 rounded-3xl shadow-xl shadow-[#003366]/5 border border-white">
           
           <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
             <div className="relative w-full sm:w-48">
               <select 
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
-                className="w-full pl-4 pr-10 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-base font-bold text-[#003366] appearance-none focus:ring-2 focus:ring-[#D4AF37] outline-none transition-all cursor-pointer"
+                className="w-full pl-4 pr-10 py-3.5 bg-slate-50 border-0 ring-1 ring-inset ring-gray-200 rounded-xl text-base font-bold text-[#003366] appearance-none focus:ring-2 focus:ring-inset focus:ring-[#D4AF37] outline-none transition-all cursor-pointer shadow-sm"
               >
                 <option value="">كل السنوات</option>
                 {(() => {
@@ -202,7 +197,7 @@ export function OutstandingDebtsModule() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="بحث في السجل..." 
-                className="w-full pl-4 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-base font-medium focus:ring-2 focus:ring-[#D4AF37] outline-none transition-all"
+                className="w-full pl-4 pr-12 py-3.5 bg-slate-50 border-0 ring-1 ring-inset ring-gray-200 rounded-xl text-base font-medium focus:ring-2 focus:ring-inset focus:ring-[#D4AF37] outline-none transition-all shadow-sm"
               />
               <Search className="w-5 h-5 text-[#003366] absolute right-4 top-1/2 -translate-y-1/2" />
             </div>
@@ -210,14 +205,14 @@ export function OutstandingDebtsModule() {
           
           <div className="flex items-center gap-3 w-full lg:w-auto">
              <input type="file" accept=".xlsx, .xls, .csv" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
-             <button onClick={triggerFileInput} disabled={isUploading} className={`flex items-center gap-2 px-6 py-3.5 rounded-xl font-bold transition-all w-full justify-center ${isUploading ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-[#D4AF37] text-[#003366] hover:bg-[#C5A028] shadow-lg active:scale-95'}`}>
+             <button onClick={triggerFileInput} disabled={isUploading} className={`flex items-center gap-2 px-6 py-3.5 rounded-xl font-bold transition-all duration-300 w-full justify-center ${isUploading ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-gradient-to-r from-[#D4AF37] to-[#C5A028] text-white hover:shadow-lg hover:-translate-y-0.5 shadow-md active:scale-95'}`}>
                {isUploading ? (<><Loader2 className="w-5 h-5 animate-spin" /><span>جاري الاستيراد...</span></>) : (<><FileSpreadsheet className="w-5 h-5" /><span>استيراد ملف Excel</span></>)}
              </button>
           </div>
         </div>
 
         {/* Tableau */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl shadow-[#003366]/5 border border-white overflow-hidden transition-all duration-300 hover:shadow-[#003366]/10">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-right border-collapse min-w-[1200px]">
               <thead className="bg-[#003366] text-white font-bold">
@@ -282,9 +277,9 @@ export function OutstandingDebtsModule() {
           </div>
           
           {/* Pagination */}
-          {filteredData.length > 0 && (
-            <div className="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between bg-gray-50 gap-4">
-              <span className="text-sm text-gray-500 font-medium">إجمالي السجلات: {filteredData.length} | عرض {indexOfFirstItem + 1} إلى {Math.min(indexOfLastItem, filteredData.length)}</span>
+          {totalItems > 0 && (
+            <div className="px-6 py-4 border-t border-gray-100/50 flex flex-col sm:flex-row items-center justify-between bg-white/50 backdrop-blur-md gap-4">
+              <span className="text-sm text-gray-500 font-medium">إجمالي السجلات: {totalItems} | عرض الصفحة {currentPage}</span>
               <div className="flex gap-2">
                 <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className={`px-4 py-2 text-sm border rounded-lg font-medium transition-all ${currentPage === 1 ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed' : 'border-gray-300 bg-white text-[#003366] hover:bg-gray-50'}`}>السابق</button>
                 <span className="px-4 py-2 text-sm border-transparent rounded-lg bg-[#003366] text-white font-bold shadow-md flex items-center justify-center min-w-[3rem]">{currentPage} / {totalPages}</span>

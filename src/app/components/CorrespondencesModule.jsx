@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Send, Printer, Plus, Building, User, FileText, Info, Hash, Loader2, Archive, Search, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Send, Printer, Plus, Building, User, FileText, Info, Hash, Loader2, Archive, Search, X, ChevronRight, ChevronLeft } from 'lucide-react';
 import Swal from 'sweetalert2';
 import api from '../api/axios'; 
 
@@ -11,6 +11,9 @@ export default function CorrespondencesModule() {
   const [archiveData, setArchiveData] = useState([]);
   const [searchArchiveQuery, setSearchArchiveQuery] = useState('');
   const [isLoadingArchive, setIsLoadingArchive] = useState(false);
+  const [archivePage, setArchivePage] = useState(1);
+  const [archiveTotalItems, setArchiveTotalItems] = useState(0);
+  const [archiveTotalPages, setArchiveTotalPages] = useState(1);
   
   // State for dynamic supervision inputs
   const [recipientSupervisors, setRecipientSupervisors] = useState([]);
@@ -44,34 +47,36 @@ export default function CorrespondencesModule() {
   };
 
   // --- 🔥 CORRECTION 1: FONCTION POUR OUVRIR L'ARCHIVE (100% AXIOS) ---
-  const openArchiveModal = async () => {
-    setIsArchiveModalOpen(true);
+  const fetchArchive = async () => {
+    if (!isArchiveModalOpen) return;
     setIsLoadingArchive(true);
     
     try {
-      // Plus besoin de récupérer le token, Axios le fait
-      const response = await api.get('/correspondences/archive');
+      const response = await api.get('/correspondences/archive', {
+        params: { page: archivePage, search: searchArchiveQuery }
+      });
       
-      // Axios parse le JSON automatiquement dans response.data
-      setArchiveData(response.data);
+      setArchiveData(response.data.data || []);
+      setArchiveTotalItems(response.data.total || 0);
+      setArchiveTotalPages(response.data.last_page || 1);
     } catch (error) {
       console.error('Erreur:', error);
-      Swal.fire({ icon: 'error', title: 'خطأ', text: 'تعذر تحميل الأرشيف' });
     } finally {
       setIsLoadingArchive(false);
     }
   };
 
-  // Filtrer les données de l'archive selon la recherche
-  const filteredArchive = archiveData.filter(item => {
-    const query = searchArchiveQuery.toLowerCase();
-    return (
-      (item.registration_number && item.registration_number.toLowerCase().includes(query)) ||
-      (item.recipient_to && item.recipient_to.toLowerCase().includes(query)) ||
-      (item.subject && item.subject.toLowerCase().includes(query)) ||
-      (item.date_envoi && item.date_envoi.includes(query))
-    );
-  });
+  useEffect(() => {
+    fetchArchive();
+  }, [archivePage, searchArchiveQuery, isArchiveModalOpen]);
+
+  const openArchiveModal = () => {
+    setArchivePage(1);
+    setSearchArchiveQuery('');
+    setIsArchiveModalOpen(true);
+  };
+
+  const filteredArchive = archiveData;
 
   // --- 🔥 CORRECTION 2: FONCTION POUR GÉNÉRER LA LETTRE (100% AXIOS AVEC BLOB) ---
   const handlePrint = async () => {
@@ -166,13 +171,13 @@ export default function CorrespondencesModule() {
   };
 
   return (
-    <div className="bg-gray-50/50 min-h-full font-sans flex flex-col" dir="rtl">
+    <div className="bg-transparent min-h-full font-sans flex flex-col" dir="rtl">
       <div className="max-w-5xl mx-auto space-y-6 pt-2 w-full flex-1 mb-24">
         
         {/* Header avec le nouveau bouton Archive */}
         <div className="flex items-center justify-between border-b border-gray-200 pb-6">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-[#003366] rounded-2xl shadow-lg flex items-center justify-center border-2 border-[#D4AF37]/30">
+            <div className="w-14 h-14 bg-gradient-to-br from-[#003366] to-[#001f3f] rounded-2xl shadow-[0_10px_20px_rgba(0,51,102,0.2)] flex items-center justify-center border border-white/10">
               <Send className="w-7 h-7 text-[#D4AF37]" />
             </div>
             <div>
@@ -192,10 +197,12 @@ export default function CorrespondencesModule() {
 
         <div className="grid grid-cols-1 gap-6">
           {/* Card 1: معلومات الإرسال */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="bg-gray-50/50 px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-              <Building className="w-5 h-5 text-[#003366]" />
-              <h2 className="text-lg font-bold text-[#003366]">معلومات الإرسال</h2>
+          <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl shadow-[#003366]/5 border border-white overflow-hidden transition-all duration-300 hover:shadow-[#003366]/10">
+            <div className="bg-white/50 backdrop-blur-md px-6 py-5 border-b border-gray-100/50 flex items-center gap-3">
+              <div className="p-2 bg-[#003366]/5 rounded-lg">
+                <Building className="w-5 h-5 text-[#003366]" />
+              </div>
+              <h2 className="text-xl font-extrabold text-[#003366]">معلومات الإرسال</h2>
             </div>
             
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -215,7 +222,7 @@ export default function CorrespondencesModule() {
                       type="text" 
                       value={senderInfo.from}
                       onChange={(e) => setSenderInfo({...senderInfo, from: e.target.value})}
-                      className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#D4AF37] focus:border-[#D4AF37] outline-none transition-all shadow-sm"
+                      className="w-full px-4 py-3 bg-slate-50 border-0 ring-1 ring-inset ring-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-inset focus:ring-[#D4AF37] focus:bg-white outline-none transition-all shadow-sm"
                     />
                   </div>
                   
@@ -226,7 +233,7 @@ export default function CorrespondencesModule() {
                         type="text" 
                         value={senderInfo.registrationNumber}
                         onChange={(e) => setSenderInfo({...senderInfo, registrationNumber: e.target.value})}
-                        className="w-full pl-4 pr-10 py-3 bg-white border border-gray-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-[#D4AF37] focus:border-[#D4AF37] outline-none transition-all shadow-sm"
+                        className="w-full pl-4 pr-10 py-3 bg-slate-50 border-0 ring-1 ring-inset ring-gray-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-inset focus:ring-[#D4AF37] focus:bg-white outline-none transition-all shadow-sm"
                         dir="ltr"
                       />
                       <Hash className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
@@ -252,7 +259,7 @@ export default function CorrespondencesModule() {
                       value={recipientInfo.to}
                       onChange={(e) => setRecipientInfo({...recipientInfo, to: e.target.value})}
                       placeholder="أدخل صفة أو اسم المرسل إليه..."
-                      className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#D4AF37] focus:border-[#D4AF37] outline-none transition-all shadow-sm"
+                      className="w-full px-4 py-3 bg-slate-50 border-0 ring-1 ring-inset ring-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-inset focus:ring-[#D4AF37] focus:bg-white outline-none transition-all shadow-sm"
                     />
                   </div>
                   
@@ -266,7 +273,7 @@ export default function CorrespondencesModule() {
                           placeholder={`جهة الإشراف ${index + 1}...`}
                           value={supervisor}
                           onChange={(e) => updateSupervisor(index, e.target.value)}
-                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#003366] focus:border-[#003366] outline-none transition-all"
+                          className="w-full px-4 py-3 bg-slate-50 border-0 ring-1 ring-inset ring-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-inset focus:ring-[#003366] focus:bg-white outline-none transition-all shadow-sm"
                         />
                       ))}
                     </div>
@@ -285,10 +292,12 @@ export default function CorrespondencesModule() {
           </div>
 
           {/* Card 2: معلومات الجدول */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="bg-gray-50/50 px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-[#003366]" />
-              <h2 className="text-lg font-bold text-[#003366]">معلومات الجدول</h2>
+          <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl shadow-[#003366]/5 border border-white overflow-hidden transition-all duration-300 hover:shadow-[#003366]/10">
+            <div className="bg-white/50 backdrop-blur-md px-6 py-5 border-b border-gray-100/50 flex items-center gap-3">
+              <div className="p-2 bg-[#003366]/5 rounded-lg">
+                <FileText className="w-5 h-5 text-[#003366]" />
+              </div>
+              <h2 className="text-xl font-extrabold text-[#003366]">معلومات الجدول</h2>
             </div>
             
             <div className="p-6 space-y-6">
@@ -299,7 +308,7 @@ export default function CorrespondencesModule() {
                   onChange={(e) => setTableInfo({...tableInfo, subject: e.target.value})}
                   rows={6}
                   placeholder="أدخل التفاصيل هنا (أرقام الملفات الخ)..."
-                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#D4AF37] focus:border-[#D4AF37] outline-none transition-all shadow-sm resize-y font-mono leading-relaxed"
+                  className="w-full px-4 py-3 bg-slate-50 border-0 ring-1 ring-inset ring-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-inset focus:ring-[#D4AF37] focus:bg-white outline-none transition-all shadow-sm resize-y font-mono leading-relaxed"
                   dir="rtl"
                 ></textarea>
               </div>
@@ -311,7 +320,7 @@ export default function CorrespondencesModule() {
                   min="0"
                   value={tableInfo.attachmentsCount}
                   onChange={(e) => setTableInfo({...tableInfo, attachmentsCount: e.target.value})}
-                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-[#D4AF37] focus:border-[#D4AF37] outline-none transition-all shadow-sm"
+                  className="w-full px-4 py-3 bg-slate-50 border-0 ring-1 ring-inset ring-gray-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-inset focus:ring-[#D4AF37] focus:bg-white outline-none transition-all shadow-sm"
                 />
               </div>
               
@@ -322,15 +331,15 @@ export default function CorrespondencesModule() {
                   onChange={(e) => setTableInfo({...tableInfo, notes: e.target.value})}
                   rows={7}
                   placeholder="ملاحظات إضافية ونهاية الرسالة..."
-                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#D4AF37] focus:border-[#D4AF37] outline-none transition-all shadow-sm resize-y leading-relaxed"
+                  className="w-full px-4 py-3 bg-slate-50 border-0 ring-1 ring-inset ring-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-inset focus:ring-[#D4AF37] focus:bg-white outline-none transition-all shadow-sm resize-y leading-relaxed"
                 ></textarea>
               </div>
               <div className="max-w-5xl mx-auto flex justify-start pl-64">
                 <button 
                   onClick={handlePrint}
                   disabled={isGenerating}
-                  className={`flex items-center justify-center gap-2 px-6 py-3 text-white rounded-lg font-bold transition-colors focus:ring-4 shadow-md
-                    ${isGenerating ? 'bg-[#002244]/70 cursor-wait' : 'bg-[#002244] hover:bg-[#00152b] focus:ring-[#002244]/30'}`}
+                  className={`flex items-center justify-center gap-2 px-6 py-3.5 text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5
+                    ${isGenerating ? 'bg-gradient-to-r from-[#003366]/70 to-[#002244]/70 cursor-wait' : 'bg-gradient-to-r from-[#003366] to-[#002244]'}`}
                 >
                   {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Printer className="w-5 h-5" />}
                   <span>{isGenerating ? 'جاري التحضير...' : 'تنزيل ملف Word'}</span>
@@ -415,6 +424,54 @@ export default function CorrespondencesModule() {
                 </div>
               )}
             </div>
+
+            {/* Pagination Archive */}
+            {!isLoadingArchive && archiveTotalItems > 0 && (
+              <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white">
+                <span className="text-sm text-gray-500">
+                  عرض الصفحة <span className="font-bold text-gray-700">{archivePage}</span> من أصل <span className="font-bold text-gray-700">{archiveTotalItems}</span> سجلات
+                </span>
+                <div className="flex items-center gap-2">
+                  <button 
+                    disabled={archivePage === 1}
+                    onClick={() => setArchivePage(prev => Math.max(prev - 1, 1))}
+                    className="p-2 rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-30 transition-all shadow-sm"
+                  >
+                    <ChevronRight className="w-5 h-5 text-[#003366]" />
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    {[...Array(archiveTotalPages)].map((_, i) => {
+                      const page = i + 1;
+                      if (page === 1 || page === archiveTotalPages || (page >= archivePage - 2 && page <= archivePage + 2)) {
+                        return (
+                          <button
+                            key={page}
+                            onClick={() => setArchivePage(page)}
+                            className={`w-8 h-8 rounded-lg font-bold text-xs transition-all ${
+                              archivePage === page 
+                              ? 'bg-[#003366] text-[#D4AF37] shadow-lg' 
+                              : 'bg-white border text-gray-500 hover:bg-gray-100'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        );
+                      }
+                      return null;
+                    })}
+                  </div>
+
+                  <button 
+                    disabled={archivePage === archiveTotalPages || archiveTotalPages === 0}
+                    onClick={() => setArchivePage(prev => Math.min(prev + 1, archiveTotalPages))}
+                    className="p-2 rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-30 transition-all shadow-sm"
+                  >
+                    <ChevronLeft className="w-5 h-5 text-[#003366]" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

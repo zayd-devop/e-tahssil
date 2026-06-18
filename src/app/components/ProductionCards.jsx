@@ -192,8 +192,8 @@ export function ProductionCards() {
     }
   };
 
-  const inputClassName = "w-full p-3.5 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent bg-gray-50 transition-all text-[#003366] placeholder-gray-500 text-right";
-  const labelClassName = "block text-sm font-semibold text-gray-700 mb-2 text-right";
+  const inputClassName = "w-full p-3.5 text-base border-0 bg-slate-50 rounded-xl shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-[#D4AF37] focus:bg-white transition-all duration-200 text-[#003366] placeholder-gray-400 text-right";
+  const labelClassName = "block text-sm font-bold text-gray-700 mb-2 text-right";
 
   if (isLoadingHierarchy) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="w-10 h-10 animate-spin text-[#003366]" /></div>;
@@ -213,19 +213,21 @@ export function ProductionCards() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         
-        <div className="p-6 bg-white rounded-xl shadow-sm border-t border-b border-gray-100 border-r-4 border-r-[#003366] border-l">
+        <div className="p-6 bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg shadow-[#003366]/5 border border-white border-r-4 border-r-[#003366]">
           <label className="block text-lg font-bold text-[#003366] mb-3 text-right">
             {t.employeeLabel} <span className="text-red-500">*</span>
           </label>
-          <input type="text" name="employeeName" value={formData.employeeName} readOnly disabled className="w-full p-4 text-base border-2 border-gray-200 rounded-lg bg-gray-100 text-[#003366] font-bold cursor-not-allowed transition-all text-right" />
+          <input type="text" name="employeeName" value={formData.employeeName} readOnly disabled className="w-full p-4 text-base border-0 bg-gray-100 rounded-xl text-[#003366] font-bold cursor-not-allowed transition-all text-right ring-1 ring-inset ring-gray-200" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Card 1: Informations Générales */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden lg:col-span-2">
-            <div className="bg-gray-50 p-4 border-b border-gray-100 flex items-center gap-3">
-              <Info className="w-5 h-5 text-[#003366]" />
-              <h3 className="text-lg font-bold text-gray-800">{t.card1Title}</h3>
+          <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl shadow-[#003366]/5 border border-white overflow-hidden lg:col-span-2 transition-all duration-300 hover:shadow-[#003366]/10">
+            <div className="bg-gray-50/50 p-5 border-b border-gray-100 flex items-center gap-3">
+              <div className="p-2 bg-[#003366]/5 rounded-lg">
+                <Info className="w-5 h-5 text-[#003366]" />
+              </div>
+              <h3 className="text-lg font-extrabold text-[#003366]">{t.card1Title}</h3>
             </div>
             
             <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -253,11 +255,13 @@ export function ProductionCards() {
           </div>
 
           {/* Card 2: Travail Administratif */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden lg:col-span-2">
-            <div className="bg-gray-50 p-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl shadow-[#003366]/5 border border-white overflow-hidden lg:col-span-2 transition-all duration-300 hover:shadow-[#003366]/10">
+            <div className="bg-gray-50/50 p-5 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Mail className="w-5 h-5 text-[#003366]" />
-                <h3 className="text-lg font-bold text-gray-800">{t.card2Title}</h3>
+                <div className="p-2 bg-[#003366]/5 rounded-lg">
+                  <Mail className="w-5 h-5 text-[#003366]" />
+                </div>
+                <h3 className="text-lg font-extrabold text-[#003366]">{t.card2Title}</h3>
               </div>
             </div>
             
@@ -334,10 +338,12 @@ export function ProductionCards() {
           </div>
 
           {/* Card 3: Mesures Coercitives & PVs */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden lg:col-span-2">
-            <div className="bg-gray-50 p-4 border-b border-gray-100 flex items-center gap-3">
-              <ShieldAlert className="w-5 h-5 text-orange-600" />
-              <h3 className="text-lg font-bold text-gray-800">{t.card3Title}</h3>
+          <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl shadow-[#003366]/5 border border-white overflow-hidden lg:col-span-2 transition-all duration-300 hover:shadow-[#003366]/10">
+            <div className="bg-gray-50/50 p-5 border-b border-gray-100 flex items-center gap-3">
+              <div className="p-2 bg-orange-50 rounded-lg">
+                <ShieldAlert className="w-5 h-5 text-orange-600" />
+              </div>
+              <h3 className="text-lg font-extrabold text-[#003366]">{t.card3Title}</h3>
             </div>
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
               
@@ -375,10 +381,12 @@ export function ProductionCards() {
           </div>
 
           {/* Card 4: Exécutions & Recouvrements */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden lg:col-span-2">
-            <div className="bg-gray-50 p-4 border-b border-gray-100 flex items-center gap-3">
-              <DollarSign className="w-5 h-5 text-emerald-600" />
-              <h3 className="text-lg font-bold text-gray-800">{t.card4Title}</h3>
+          <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl shadow-[#003366]/5 border border-white overflow-hidden lg:col-span-2 transition-all duration-300 hover:shadow-[#003366]/10">
+            <div className="bg-gray-50/50 p-5 border-b border-gray-100 flex items-center gap-3">
+              <div className="p-2 bg-emerald-50 rounded-lg">
+                <DollarSign className="w-5 h-5 text-emerald-600" />
+              </div>
+              <h3 className="text-lg font-extrabold text-[#003366]">{t.card4Title}</h3>
             </div>
             
             <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
@@ -407,9 +415,8 @@ export function ProductionCards() {
             </div>
           </div>
         </div>
-
         <div className="mt-8 flex justify-end">
-          <button type="submit" className="flex items-center gap-3 px-10 py-4 bg-[#003366] text-white rounded-xl text-lg font-bold hover:bg-[#004080] transition-colors shadow-lg hover:shadow-xl">
+          <button type="submit" className="flex items-center gap-3 px-10 py-4 bg-gradient-to-r from-[#003366] to-[#002244] text-white rounded-xl text-lg font-bold hover:shadow-xl hover:-translate-y-1 transition-all duration-300 shadow-lg">
             <Save className="w-6 h-6" />
             <span>{t.save}</span>
           </button>

@@ -13,6 +13,9 @@ export function DirectedProcedureModule({ onLogout }) {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 50;
 
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
   // --- نظام الأرشيف (Archive System) ---
   const [isArchiveView, setIsArchiveView] = useState(false);
   const [archivedIds, setArchivedIds] = useState(() => {
@@ -64,18 +67,43 @@ export function DirectedProcedureModule({ onLogout }) {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const response = await api.get(API_URL);
+      const payload = {
+        page: currentPage,
+        search: searchQuery,
+        role: selectedRole,
+      };
+
+      if (isArchiveView) {
+        if (archivedIds.length === 0) {
+           setData([]);
+           setTotalItems(0);
+           setTotalPages(1);
+           setIsLoading(false);
+           return;
+        }
+        payload.include_ids = archivedIds;
+      } else {
+        if (archivedIds.length > 0) {
+          payload.exclude_ids = archivedIds;
+        }
+      }
+
+      const response = await api.post(`${API_URL}/search`, payload);
       
-      // Axios place directement les données JSON dans response.data
-      setData(response.data);
+      setData(response.data.data || []);
+      setTotalItems(response.data.total || 0);
+      setTotalPages(response.data.last_page || 1);
     } catch (error) {
       console.error('Erreur de chargement:', error);
-      // L'intercepteur Axios gère déjà l'erreur 401 (déconnexion)
       Swal.fire({ icon: 'error', title: 'خطأ في الاتصال', text: 'تعذر تحميل البيانات من الخادم', confirmButtonColor: '#003366' });
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchData();
+  }, [currentPage, searchQuery, selectedRole, isArchiveView, archivedIds]);
 
   // --- دوال نظام الأرشيف ---
   const handleUnarchiveSelected = () => {
@@ -474,9 +502,9 @@ export function DirectedProcedureModule({ onLogout }) {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      // 🔥 5. CORRECTION ICI : AXIOS AVEC PROMISE.ALL
+      // 🔥 5. CORRECTION ICI : UTILISER LE NOUVEAU ENDPOINT BULK-PRINT
       try {
-        await Promise.all(selectedIds.map(id => api.post(`${API_URL}/print/${id}`)));
+        await api.post(`${API_URL}/bulk-print`, { ids: selectedIds });
       } catch (apiError) {
         console.error("Erreur lors de l'enregistrement de l'impression groupée :", apiError);
       }
@@ -508,23 +536,7 @@ export function DirectedProcedureModule({ onLogout }) {
     return Array.from(rolesSet).sort();
   }, [data]);
 
-  const filteredData = data.filter(row => {
-    const isArchived = archivedIds.includes(row.id);
-    if (isArchiveView && !isArchived) return false;
-    if (!isArchiveView && isArchived) return false;
-
-    const query = searchQuery.toLowerCase();
-    const fileNum = (row.fileNumber || row.file_number || '').toLowerCase();
-    const matchSearch = !searchQuery || fileNum.includes(query) || (row.parties && row.parties.some(party => party.toLowerCase().includes(query)));
-    const matchRole = !selectedRole || (row.role && row.role.includes(selectedRole));
-    
-    return matchSearch && matchRole;
-  });
-
-  const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = startIndex + ITEMS_PER_PAGE;
-  const paginatedData = filteredData.slice(startIndex, endIndex);
+  const paginatedData = data;
 
   const toggleSelect = (id) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -545,7 +557,7 @@ export function DirectedProcedureModule({ onLogout }) {
         {/* Header & Actions */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-200 pb-6">
           <div className="flex items-center gap-4">
-            <div className={`w-14 h-14 rounded-2xl shadow-lg flex items-center justify-center border-2 border-[#D4AF37]/30 ${isArchiveView ? 'bg-gray-600' : 'bg-[#003366]'}`}>
+            <div className={`w-14 h-14 rounded-2xl shadow-[0_10px_20px_rgba(0,51,102,0.2)] flex items-center justify-center border border-white/10 ${isArchiveView ? 'bg-gradient-to-br from-gray-600 to-gray-800' : 'bg-gradient-to-br from-[#003366] to-[#001f3f]'}`}>
               {isArchiveView ? <Archive className="w-7 h-7 text-[#D4AF37]" /> : <FileText className="w-7 h-7 text-[#D4AF37]" />}
             </div>
             <div>
@@ -604,17 +616,17 @@ export function DirectedProcedureModule({ onLogout }) {
         </div>
 
         {/* Data Table Section */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-gray-50/80">
+        <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl shadow-[#003366]/5 border border-white overflow-hidden transition-all duration-300">
+          <div className="p-5 border-b border-gray-100/50 flex flex-col md:flex-row items-center justify-between gap-4 bg-white/50 backdrop-blur-md">
             <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
               <div className="relative w-full sm:w-80">
-                <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="بحث برقم الملف أو اسم الطرف..." className="w-full pl-4 pr-10 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#D4AF37] focus:border-[#D4AF37] outline-none" />
+                <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="بحث برقم الملف أو اسم الطرف..." className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border-0 ring-1 ring-inset ring-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-inset focus:ring-[#D4AF37] focus:bg-white outline-none transition-all shadow-sm" />
                 <Search className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
                 {searchQuery && <button onClick={() => setSearchQuery('')} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button>}
               </div>
 
               <div className="relative w-full sm:w-48">
-                <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)} className="w-full pl-4 pr-10 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#D4AF37] focus:border-[#D4AF37] outline-none appearance-none bg-white text-gray-700 cursor-pointer">
+                <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)} className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border-0 ring-1 ring-inset ring-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-inset focus:ring-[#D4AF37] focus:bg-white outline-none appearance-none cursor-pointer transition-all shadow-sm">
                   <option value="">جميع الصفات</option>
                   {uniqueRoles.map((role, idx) => <option key={idx} value={role}>{role}</option>)}
                 </select>
@@ -624,13 +636,13 @@ export function DirectedProcedureModule({ onLogout }) {
 
             <div className="text-sm text-gray-500 font-medium bg-white px-3 py-1.5 rounded-md border border-gray-200 shadow-sm flex items-center gap-2">
               <span>نتائج البحث:</span>
-              <span className="font-bold text-[#003366]">{filteredData.length}</span> 
+              <span className="font-bold text-[#003366]">{totalItems}</span> 
             </div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-right">
-              <thead className="bg-[#003366]/5 text-[#003366] font-bold border-b border-[#003366]/10">
+              <thead className="bg-[#003366]/5 text-[#003366] font-extrabold border-b border-[#003366]/10 backdrop-blur-sm">
                 <tr>
                   <th className="px-5 py-4 text-center w-12">
                     <input type="checkbox" className="accent-[#D4AF37] w-4 h-4 cursor-pointer rounded" checked={selectedIds.length === paginatedData.length && paginatedData.length > 0} onChange={toggleSelectAll} />
@@ -742,10 +754,10 @@ export function DirectedProcedureModule({ onLogout }) {
             </table>
           </div>
 
-          {!isLoading && filteredData.length > 0 && (
-            <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50/50">
+          {!isLoading && totalItems > 0 && (
+            <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/50 backdrop-blur-md">
               <span className="text-sm text-gray-500">
-                عرض <span className="font-bold text-gray-700">{startIndex + 1}</span> إلى <span className="font-bold text-gray-700">{Math.min(endIndex, filteredData.length)}</span> من أصل <span className="font-bold text-gray-700">{filteredData.length}</span> سجلات
+                عرض الصفحة <span className="font-bold text-gray-700">{currentPage}</span> من أصل <span className="font-bold text-gray-700">{totalItems}</span> سجلات
               </span>
               <div className="flex items-center gap-2">
                 <button 

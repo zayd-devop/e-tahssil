@@ -14,46 +14,47 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
 
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
   const defaultMainText = 'المطلوب منكم الحضور شخصيا إلى مقر هذه المحكمة في أقرب الآجال لأمر يهمكم والسلام .';
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [printData, setPrintData] = useState({ execution_order_number: '', execution_order_date: '', debtor_name: '', debtor_address: '', formattedMainText: defaultMainText });
 
   const fileInputRef = useRef(null);
   
-  // Plus besoin de /api car Axios le gère dans son baseURL
   const API_URL = '/financial-fees';
-  
-  // 🔥 SUPPRESSION DE getToken() car Axios s'en occupe tout seul !
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setSelectedIds([]);
+  }, [type, selectedYear]);
 
   useEffect(() => {
     fetchData();
-    setCurrentPage(1);
-    setSearchQuery('');
-    setSelectedIds([]);
-  }, [type, selectedYear]);
+  }, [type, selectedYear, currentPage, searchQuery]);
 
   // 🔥 CORRECTION 1: GET (Liste)
   // 🔥 CORRECTION : Utilisation des paramètres dynamiques Axios
   const fetchData = async () => {
     try {
       setIsLoading(true);
+      const queryParams = {
+        page: currentPage,
+        search: searchQuery
+      };
       
-      // 1. On prépare un objet de paramètres vide
-      const queryParams = {};
-      
-      // 2. On n'ajoute 'year' QUE s'il contient une vraie valeur (ex: '2026')
-      // Si selectedYear est vide (''), il ne sera pas envoyé du tout au serveur !
       if (selectedYear) {
         queryParams.year = selectedYear;
       }
 
-      // 3. On passe l'objet params à Axios
       const response = await api.get(`${API_URL}/${type}`, {
         params: queryParams
       });
       
-      // Axios injecte directement le résultat JSON dans response.data
-      setData(response.data);
+      setData(response.data.data || []);
+      setTotalItems(response.data.total || 0);
+      setTotalPages(response.data.last_page || 1);
       
     } catch (error) {
       console.error('Erreur:', error);
@@ -68,19 +69,7 @@ export default function FinancialFeesModule({ type, title, tableHeaderTitle }) {
     }
   };
 
-  const filteredData = useMemo(() => {
-    const query = searchQuery.toLowerCase();
-    return data.filter(row => 
-      (row.debtor_name || '').toLowerCase().includes(query) || 
-      (row.registry_number || '').toLowerCase().includes(query) ||
-      (row.execution_order_number || '').toLowerCase().includes(query)
-    );
-  }, [data, searchQuery]);
-
-  const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = startIndex + ITEMS_PER_PAGE;
-  const paginatedData = filteredData.slice(startIndex, endIndex);
+  const paginatedData = data;
 
   const toggleSelect = (id) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -339,7 +328,7 @@ const handleBulkPrint = async (docType) => {
         {/* Header & Actions */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-200 pb-6">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-[#003366] rounded-2xl shadow-lg flex items-center justify-center border-2 border-[#D4AF37]/30">
+            <div className="w-14 h-14 bg-gradient-to-br from-[#003366] to-[#001f3f] rounded-2xl shadow-[0_10px_20px_rgba(0,51,102,0.2)] flex items-center justify-center border border-white/10">
               {type === 'complementary' ? <Coins className="w-7 h-7 text-[#D4AF37]" /> : <Scale className="w-7 h-7 text-[#D4AF37]" />}
             </div>
             <div>
@@ -370,7 +359,7 @@ const handleBulkPrint = async (docType) => {
               <select 
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
-                className="w-full pl-4 pr-10 py-3.5 bg-white border border-gray-200 rounded-xl text-base font-bold text-[#003366] appearance-none focus:ring-2 focus:ring-[#D4AF37] outline-none transition-all cursor-pointer shadow-sm"
+                className="w-full pl-4 pr-10 py-3.5 bg-slate-50 border-0 ring-1 ring-inset ring-gray-200 rounded-xl text-base font-bold text-[#003366] appearance-none focus:ring-2 focus:ring-inset focus:ring-[#D4AF37] focus:bg-white outline-none transition-all cursor-pointer shadow-sm"
               >
                 <option value="">كل السنوات</option>
                 {(() => {
@@ -396,15 +385,15 @@ const handleBulkPrint = async (docType) => {
         </div>
 
         {/* Data Table Section */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-gray-50/80">
+        <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl shadow-[#003366]/5 border border-white overflow-hidden transition-all duration-300 hover:shadow-[#003366]/10">
+          <div className="p-5 border-b border-gray-100/50 flex flex-col md:flex-row items-center justify-between gap-4 bg-white/50 backdrop-blur-md">
             <div className="relative w-full md:w-96">
               <input 
                 type="text" 
                 value={searchQuery} 
                 onChange={(e) => {setSearchQuery(e.target.value); setCurrentPage(1);}} 
                 placeholder="البحث باسم المدين أو رقم الأمر..." 
-                className="w-full pl-4 pr-10 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#D4AF37] outline-none" 
+                className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border-0 ring-1 ring-inset ring-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-inset focus:ring-[#D4AF37] focus:bg-white outline-none transition-all shadow-sm" 
               />
               <Search className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
               {searchQuery && <button onClick={() => setSearchQuery('')} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button>}
@@ -412,13 +401,13 @@ const handleBulkPrint = async (docType) => {
 
             <div className="text-sm text-gray-500 font-medium bg-white px-3 py-1.5 rounded-md border border-gray-200 shadow-sm flex items-center gap-2">
               <span>نتائج البحث:</span>
-              <span className="font-bold text-[#003366]">{filteredData.length}</span> 
+              <span className="font-bold text-[#003366]">{totalItems}</span> 
             </div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-right">
-              <thead className="bg-[#003366]/5 text-[#003366] font-bold border-b border-[#003366]/10 whitespace-nowrap">
+              <thead className="bg-[#003366]/5 text-[#003366] font-extrabold border-b border-[#003366]/10 backdrop-blur-sm whitespace-nowrap">
                 <tr>
                   <th className="px-5 py-4 text-center w-12">
                     <input type="checkbox" className="accent-[#D4AF37] w-4 h-4 cursor-pointer rounded" checked={selectedIds.length === paginatedData.length && paginatedData.length > 0} onChange={toggleSelectAll} />
@@ -475,10 +464,10 @@ const handleBulkPrint = async (docType) => {
             </table>
           </div>
 
-          {!isLoading && filteredData.length > 0 && (
-            <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50/50">
+          {!isLoading && totalItems > 0 && (
+            <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/50 backdrop-blur-md">
               <span className="text-sm text-gray-500">
-                عرض <span className="font-bold text-gray-700">{startIndex + 1}</span> إلى <span className="font-bold text-gray-700">{Math.min(endIndex, filteredData.length)}</span> من أصل <span className="font-bold text-gray-700">{filteredData.length}</span> سجلات
+                عرض الصفحة <span className="font-bold text-gray-700">{currentPage}</span> من أصل <span className="font-bold text-gray-700">{totalItems}</span> سجلات
               </span>
               <div className="flex items-center gap-2">
                 <button disabled={currentPage === 1} onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} className="p-2 rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-30 transition-all shadow-sm">

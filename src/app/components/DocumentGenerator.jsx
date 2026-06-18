@@ -352,12 +352,12 @@ export function DocumentGenerator() {
   });
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 max-w-6xl mx-auto mt-6 font-sans" dir="rtl">
+    <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl shadow-[#003366]/5 border border-white p-8 max-w-6xl mx-auto mt-6 font-sans transition-all duration-300 hover:shadow-[#003366]/10" dir="rtl">
       
       {/* Header */}
       <div className="flex items-center justify-between mb-8 border-b border-gray-100 pb-6">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-[#D4AF37]/10 rounded-lg flex items-center justify-center">
+          <div className="w-12 h-12 bg-gradient-to-br from-[#D4AF37]/20 to-[#D4AF37]/5 rounded-lg flex items-center justify-center border border-[#D4AF37]/20 shadow-sm">
             <FileText className="w-6 h-6 text-[#D4AF37]" />
           </div>
           <div className="text-right">
@@ -379,11 +379,11 @@ export function DocumentGenerator() {
         {/* Colonne Droite : Accordéon */}
         <div className="w-full lg:w-1/3 space-y-3">
           {categories.map((cat) => (
-            <div key={cat.id} className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+            <div key={cat.id} className="border border-white shadow-sm rounded-xl overflow-hidden bg-white/50 backdrop-blur-sm">
               <button
                 type="button"
                 onClick={() => toggleCategory(cat.id)}
-                className={`w-full flex items-center justify-between p-4 transition-colors ${activeCategory === cat.id ? 'bg-[#003366] text-white' : 'bg-gray-50 text-[#003366] hover:bg-gray-100'}`}
+                className={`w-full flex items-center justify-between p-4 transition-all ${activeCategory === cat.id ? 'bg-gradient-to-r from-[#003366] to-[#001f3f] text-white shadow-md' : 'bg-white/40 text-[#003366] hover:bg-white/80'}`}
               >
                 <div className="flex items-center gap-3">{cat.icon}<span className="font-bold text-sm">{cat.title}</span></div>
                 <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${activeCategory === cat.id ? 'rotate-180 text-[#D4AF37]' : 'text-gray-400'}`} />
@@ -396,7 +396,7 @@ export function DocumentGenerator() {
                       key={doc.id}
                       type="button"
                       onClick={() => handleDocChange(doc.id)}
-                      className={`w-full text-right p-3 rounded-lg flex items-start gap-3 transition-all mb-1 last:mb-0 ${activeDoc === doc.id ? 'bg-[#D4AF37]/10 text-[#003366] border border-[#D4AF37]/30 font-bold' : 'text-gray-600 hover:bg-gray-50 hover:text-[#003366] font-medium'}`}
+                      className={`w-full text-right p-3 rounded-lg flex items-start gap-3 transition-all mb-1 last:mb-0 ${activeDoc === doc.id ? 'bg-gradient-to-r from-[#D4AF37]/10 to-transparent text-[#003366] font-bold border-r-2 border-[#D4AF37] shadow-sm' : 'text-gray-600 hover:bg-white/60 hover:text-[#003366] font-medium'}`}
                     >
                       <FolderOpen className={`w-4 h-4 mt-0.5 flex-shrink-0 ${activeDoc === doc.id ? 'text-[#D4AF37]' : 'text-gray-400'}`} />
                       <span className="text-sm leading-relaxed">{doc.title}</span>
@@ -409,10 +409,10 @@ export function DocumentGenerator() {
         </div>
 
         {/* Colonne Gauche : Formulaire Central */}
-        <div className="w-full lg:w-2/3 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="w-full lg:w-2/3 bg-white/70 backdrop-blur-xl rounded-2xl border border-white shadow-lg overflow-hidden transition-all duration-300">
           {activeDoc ? (
             <>
-              <div className="bg-gray-50 border-b border-gray-200 p-4">
+              <div className="bg-white/50 backdrop-blur-md border-b border-gray-100/50 p-4 shadow-sm">
                 <h3 className="font-bold text-[#003366] flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-[#D4AF37]"></span>
                   الوثيقة المحددة: {currentConfig.title}
@@ -449,7 +449,7 @@ export function DocumentGenerator() {
               </div>
             </div>
 
-            <div className="mb-8 bg-[#F8F9FA] p-5 rounded-xl border border-blue-50 shadow-inner">
+            <div className="mb-8 bg-white/40 backdrop-blur-sm p-5 rounded-xl border border-white shadow-sm hover:shadow-md transition-all">
               <h4 className="text-lg font-bold text-[#003366] mb-5">معلومات خاصة بالوثيقة</h4>
               
               {currentConfig.fields.length > 0 ? (
@@ -498,14 +498,14 @@ export function DocumentGenerator() {
               )}
             </div>
 
-            <div className="flex justify-end pt-6 border-t border-gray-100">
+            <div className="flex justify-end pt-6 border-t border-gray-100/50">
           <button 
             onClick={handleGenerate}
             disabled={isGenerating} 
             className={`flex items-center gap-2 px-8 py-3.5 rounded-xl font-bold transition-all duration-300 shadow-sm ${
               isGenerating 
                 ? 'bg-gray-400 text-white cursor-not-allowed' 
-                : 'bg-[#D4AF37] text-white hover:bg-[#b5952f] hover:-translate-y-0.5 hover:shadow-lg' 
+                : 'bg-gradient-to-r from-[#D4AF37] to-[#C5A028] text-white hover:shadow-lg hover:-translate-y-0.5'  
             }`}
           >
             {isGenerating ? (

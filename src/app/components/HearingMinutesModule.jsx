@@ -29,21 +29,37 @@ export default function HearingMinutesModule() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    setCurrentPage(1);
+  }, [searchQuery, dateFilter]);
 
-  // 🔥 CORRECTION 1 : GET simple avec Axios
+  useEffect(() => {
+    fetchData();
+  }, [currentPage, searchQuery, dateFilter]);
+
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      // Plus besoin de '/api/' ni de gérer le token
-      const response = await api.get('/hearing-minutes');
+      const queryParams = {
+        page: currentPage,
+        search: searchQuery
+      };
       
-      // Axios met le JSON dans response.data
-      setTableData(response.data.data);
+      const formattedDate = formatInputDate(dateFilter);
+      if (formattedDate) {
+        queryParams.date = formattedDate;
+      }
+
+      const response = await api.get('/hearing-minutes', { params: queryParams });
+      
+      setTableData(response.data.data.data || []);
+      setTotalItems(response.data.data.total || 0);
+      setTotalPages(response.data.data.last_page || 1);
     } catch (error) {
       console.error("Erreur lors du chargement des données:", error);
     } finally {
@@ -178,21 +194,7 @@ export default function HearingMinutesModule() {
     }
   };
 
-  const filteredData = tableData.filter(row => {
-    const query = searchQuery.toLowerCase();
-    const matchesSearch = row.file_number?.toLowerCase().includes(query) ||
-                          row.judgment_type?.toLowerCase().includes(query);
-    
-    const formattedFilterDate = formatInputDate(dateFilter);
-    const matchesDate = !dateFilter || row.judgment_date?.includes(formattedFilterDate);
-
-    return matchesSearch && matchesDate;
-  });
-
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
+  const currentItems = tableData;
 
   const goToNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
   const goToPrevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
@@ -232,11 +234,11 @@ export default function HearingMinutesModule() {
   };
 
   return (
-    <div className="bg-gray-50/50 min-h-full font-sans flex flex-col" dir="rtl">
+    <div className="bg-transparent min-h-full font-sans flex flex-col" dir="rtl">
       <div className="max-w-[95%] mx-auto space-y-6 pt-2 w-full flex-1">
         
         <div className="flex items-center gap-4 border-b border-gray-200 pb-6">
-          <div className="w-14 h-14 bg-[#003366] rounded-2xl shadow-lg flex items-center justify-center border-2 border-[#D4AF37]/30">
+          <div className="w-14 h-14 bg-gradient-to-br from-[#003366] to-[#001f3f] rounded-2xl shadow-[0_10px_20px_rgba(0,51,102,0.2)] flex items-center justify-center border border-white/10">
             <Gavel className="w-7 h-7 text-[#D4AF37]" />
           </div>
           <div>
@@ -247,10 +249,10 @@ export default function HearingMinutesModule() {
 
         <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} />
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl shadow-[#003366]/5 border border-white overflow-hidden transition-all duration-300 hover:shadow-[#003366]/10">
           
           {/* BARRE D'ACTIONS ET FILTRES */}
-          <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-white flex-wrap gap-4">
+          <div className="p-5 border-b border-gray-100/50 flex items-center justify-between bg-white/50 backdrop-blur-md flex-wrap gap-4">
             
             <div className="flex items-center gap-3 flex-1 flex-wrap">
               
@@ -261,7 +263,7 @@ export default function HearingMinutesModule() {
                   value={searchQuery}
                   onChange={(e) => {setSearchQuery(e.target.value); setCurrentPage(1);}}
                   placeholder="البحث برقم الملف..." 
-                  className="w-full pr-11 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#D4AF37] outline-none"
+                  className="w-full pr-11 py-2.5 bg-slate-50 border-0 ring-1 ring-inset ring-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-inset focus:ring-[#D4AF37] focus:bg-white outline-none shadow-sm transition-all"
                 />
                 <Search className="w-4 h-4 text-gray-400 absolute right-4 top-1/2 -translate-y-1/2" />
               </div>
@@ -272,7 +274,7 @@ export default function HearingMinutesModule() {
                   type="date" 
                   value={dateFilter}
                   onChange={(e) => {setDateFilter(e.target.value); setCurrentPage(1);}}
-                  className="pr-10 pl-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#D4AF37] outline-none text-gray-600"
+                  className="pr-10 pl-4 py-2.5 bg-slate-50 border-0 ring-1 ring-inset ring-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-inset focus:ring-[#D4AF37] focus:bg-white outline-none text-gray-600 shadow-sm transition-all"
                 />
                 <Calendar className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
@@ -284,7 +286,7 @@ export default function HearingMinutesModule() {
                   value={clerkName}
                   onChange={(e) => setClerkName(e.target.value)}
                   placeholder="أدخل اسم كاتب الضبط هنا..." 
-                  className="w-full pr-11 py-2.5 bg-amber-50 border border-amber-200 text-[#003366] placeholder-amber-700/50 rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#D4AF37] outline-none"
+                  className="w-full pr-11 py-2.5 bg-[#D4AF37]/5 border-0 ring-1 ring-inset ring-[#D4AF37]/30 text-[#003366] placeholder-[#D4AF37]/60 rounded-xl text-sm font-bold focus:ring-2 focus:ring-inset focus:ring-[#D4AF37] outline-none shadow-sm transition-all"
                 />
                 <UserPen className="w-4 h-4 text-amber-600 absolute right-4 top-1/2 -translate-y-1/2" />
               </div>
@@ -295,7 +297,7 @@ export default function HearingMinutesModule() {
               {selectedIds.length > 0 && (
                 <button 
                   onClick={handleMergedPrint}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 shadow-md transition-all"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-xl font-bold hover:shadow-lg hover:-translate-y-0.5 shadow-md transition-all"
                 >
                   <FileText className="w-5 h-5" />
                   <span>طباعة المحدد ({selectedIds.length})</span>
@@ -304,7 +306,7 @@ export default function HearingMinutesModule() {
 
               <button 
                 onClick={() => fileInputRef.current.click()} 
-                className="flex items-center gap-2 px-5 py-2.5 bg-[#003366] text-white border border-[#003366] rounded-xl font-bold hover:bg-[#002244] transition-all"
+                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#003366] to-[#002244] text-white border-none rounded-xl font-bold hover:shadow-lg hover:-translate-y-0.5 shadow-md transition-all"
               >
                 <FilePlus2 className="w-5 h-5 text-[#D4AF37]" />
                 <span> السجل العام</span>
@@ -314,7 +316,7 @@ export default function HearingMinutesModule() {
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-right">
-              <thead className="bg-gray-50 text-gray-700 font-bold border-b border-gray-200">
+              <thead className="bg-[#003366]/5 text-[#003366] font-extrabold border-b border-[#003366]/10 backdrop-blur-sm">
                 <tr>
                   <th className="px-4 py-4 text-center w-12">
                     <input 
@@ -407,9 +409,9 @@ export default function HearingMinutesModule() {
           </div>
 
           {totalPages > 1 && (
-            <div className="p-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between flex-wrap gap-4">
+            <div className="p-4 bg-white/50 backdrop-blur-md border-t border-gray-100/50 flex items-center justify-between flex-wrap gap-4">
               <span className="text-xs font-bold text-gray-500">
-                عرض {indexOfFirstItem + 1} إلى {Math.min(indexOfLastItem, filteredData.length)} من أصل {filteredData.length} سجل
+                عرض الصفحة {currentPage} من أصل {totalItems} سجل
               </span>
               
               <div className="flex items-center gap-2" dir="ltr">

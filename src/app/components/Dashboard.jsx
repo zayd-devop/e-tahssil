@@ -60,7 +60,6 @@ export function Dashboard({ onLogout, initialRole }) {
     return getValidDefaultMenu(currentRole);
   });
 
-  const [showNotifications, setShowNotifications] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
 
   // 3. 🔥 SÉCURITÉ ULTRA-SYNCHRONISÉE : S'exécute dès le premier affichage pour éviter tout blocage
@@ -86,13 +85,12 @@ export function Dashboard({ onLogout, initialRole }) {
   }, [activeMenu]);
 
   return (
-    <div className="flex h-screen bg-[#F8F9FA] rtl" dir="rtl">
+    <div className="flex h-screen bg-gradient-to-br from-slate-50 to-slate-100/80 rtl overflow-hidden" dir="rtl">
       
       <Sidebar activeMenu={activeMenu} onMenuChange={setActiveMenu} role={role} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <TopBar 
-          onNotificationClick={() => setShowNotifications(!showNotifications)}
           onLogout={onLogout}
           role={role}
           onRoleChange={setRole}
@@ -124,7 +122,6 @@ export function Dashboard({ onLogout, initialRole }) {
         </main>
       </div>
 
-      {showNotifications && null}
     </div>
   );
 }

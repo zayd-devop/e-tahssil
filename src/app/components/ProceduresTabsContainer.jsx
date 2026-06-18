@@ -25,11 +25,11 @@ export default function ProceduresTabsContainer({ onLogout }) {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pb-10" dir="rtl">
+    <div className="min-h-screen bg-transparent pb-10" dir="rtl">
       
       {/* شريط التبويبات - التصميم الحديث */}
       <div className="max-w-[95%] mx-auto pt-6 px-4">
-        <div className="bg-white/80 backdrop-blur-sm rounded-xl p-1.5 shadow-sm border border-gray-200 flex overflow-x-auto w-fit max-w-full">
+        <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-1.5 shadow-lg shadow-[#003366]/5 border border-white flex overflow-x-auto w-fit max-w-full">
           <div className="flex items-center gap-1">
             {tabs.map(tab => {
               const isActive = activeTab === tab.id;
@@ -40,8 +40,8 @@ export default function ProceduresTabsContainer({ onLogout }) {
                   // 🔥 Ajout de cursor-pointer ici 👇
                   className={`cursor-pointer flex items-center gap-2.5 px-6 py-3 rounded-lg font-bold text-sm sm:text-base transition-all duration-300 whitespace-nowrap ${
                     isActive 
-                      ? 'bg-[#003366] text-white shadow-md transform scale-[1.02]' 
-                      : 'bg-transparent text-gray-500 hover:text-[#003366] hover:bg-gray-100'
+                      ? 'bg-gradient-to-r from-[#003366] to-[#002244] text-white shadow-md transform scale-[1.02]' 
+                      : 'bg-transparent text-gray-500 hover:text-[#003366] hover:bg-white/50'
                   }`}
                 >
                   <span className={isActive ? 'text-[#D4AF37]' : 'opacity-70'}>

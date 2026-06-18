@@ -10,6 +10,11 @@ export function UserManagementModule() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
   // Éléments d'état pour la nouvelle modale d'ajout
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -25,14 +30,18 @@ export function UserManagementModule() {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [currentPage, searchQuery]);
 
   // 🔥 2. GET avec Axios
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      const response = await api.get('/users');
-      setUsers(response.data.data || response.data);
+      const response = await api.get('/users', {
+        params: { page: currentPage, search: searchQuery }
+      });
+      setUsers(response.data.data || []);
+      setTotalItems(response.data.total || 0);
+      setTotalPages(response.data.last_page || 1);
     } catch (error) {
       console.error("Erreur lors du chargement des utilisateurs:", error);
     } finally {
@@ -149,27 +158,19 @@ export function UserManagementModule() {
     return `${first.charAt(0)} ${last.charAt(0)}`;
   };
 
-  // 🔥 6. SÉCURITÉ FRONT-END : Masquer le rôle "writer"
-  const filteredUsers = users.filter(user => {
-    const userRole = user.roleType || user.role_type;
-    if (userRole === 'writer') return false;
-
-    const query = searchQuery.toLowerCase();
-    const fullName = `${user.firstName || user.first_name || ''} ${user.lastName || user.last_name || ''}`.toLowerCase();
-    return fullName.includes(query) || (user.email && user.email.toLowerCase().includes(query));
-  });
+  const filteredUsers = users;
 
   const inputClassName = "w-full p-3 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent bg-gray-50 outline-none font-medium text-[#003366] text-right mt-1.5";
   const labelClassName = "block text-xs font-bold text-gray-700 text-right";
 
   return (
-    <div className="bg-gray-50/50 min-h-full font-sans" dir="rtl">
+    <div className="bg-transparent min-h-full font-sans" dir="rtl">
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* Header & Boutons d'actions */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-200 pb-6 pt-2">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-[#003366] rounded-2xl shadow-lg flex items-center justify-center border-2 border-[#D4AF37]/30">
+            <div className="w-14 h-14 bg-gradient-to-br from-[#003366] to-[#001f3f] rounded-2xl shadow-[0_10px_20px_rgba(0,51,102,0.2)] flex items-center justify-center border border-white/10">
               <User className="w-7 h-7 text-[#D4AF37]" />
             </div>
             <div>
@@ -182,7 +183,7 @@ export function UserManagementModule() {
             {/* 🔥 BOUTON D'AJOUT MANUEL UNIQUE */}
             <button 
               onClick={() => setIsAddModalOpen(true)}
-              className="flex items-center gap-2 px-6 py-3.5 bg-[#003366] text-white rounded-xl font-bold hover:bg-[#002244] shadow-lg transition-all active:scale-95 border border-transparent w-full sm:w-auto justify-center"
+              className="flex items-center gap-2 px-6 py-3.5 bg-gradient-to-r from-[#003366] to-[#002244] text-white rounded-xl font-bold hover:shadow-lg hover:-translate-y-0.5 shadow-md transition-all duration-300 active:scale-95 border-none w-full sm:w-auto justify-center"
             >
               <UserPlus className="w-5 h-5 text-[#D4AF37]" />
               <span>إضافة موظف جديد</span>
@@ -191,26 +192,26 @@ export function UserManagementModule() {
         </div>
 
         {/* Section Table de Données */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-white">
+        <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl shadow-[#003366]/5 border border-white overflow-hidden transition-all duration-300 hover:shadow-[#003366]/10">
+          <div className="p-5 border-b border-gray-100/50 flex items-center justify-between bg-white/50 backdrop-blur-md">
             <div className="relative w-72">
               <input 
                 type="text" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="البحث عن موظف..." 
-                className="w-full pl-4 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#D4AF37] focus:border-[#D4AF37] outline-none transition-shadow text-right"
+                className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border-0 ring-1 ring-inset ring-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-inset focus:ring-[#D4AF37] outline-none transition-all shadow-sm text-right"
               />
               <Search className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
             </div>
-            <div className="text-sm text-gray-500 font-medium bg-gray-50 px-4 py-2 rounded-lg border border-gray-100">
+            <div className="text-sm text-gray-500 font-medium bg-white/60 px-4 py-2 rounded-lg border border-gray-100 shadow-sm">
               إجمالي الموظفين: <span className="text-[#003366] font-bold">{filteredUsers.length}</span>
             </div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-right">
-              <thead className="bg-[#003366] text-white font-bold border-b border-[#002244]">
+              <thead className="bg-[#003366]/5 text-[#003366] font-extrabold border-b border-[#003366]/10 backdrop-blur-sm">
                 <tr>
                   <th className="px-6 py-4 whitespace-nowrap">المستخدم</th>
                   <th className="px-6 py-4 whitespace-nowrap">البريد الإلكتروني</th>
@@ -233,7 +234,7 @@ export function UserManagementModule() {
                     <tr key={user.id} className="hover:bg-gray-50/80 transition-colors group">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-[#003366]/10 text-[#003366] flex items-center justify-center font-bold text-sm border border-[#003366]/20 shadow-sm">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37]/20 to-[#D4AF37]/5 text-[#003366] flex items-center justify-center font-bold text-sm border border-[#D4AF37]/20 shadow-sm">
                             {getInitials(user.firstName || user.first_name, user.lastName || user.last_name)}
                           </div>
                           <div>
@@ -299,9 +300,37 @@ export function UserManagementModule() {
             </table>
           </div>
           
-          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-            <span className="text-sm text-gray-500">عرض {filteredUsers.length} من أصل {filteredUsers.length} سجلات</span>
-          </div>
+          {/* Pagination */}
+          {!isLoading && totalItems > 0 && (
+            <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/50 backdrop-blur-md">
+              <span className="text-sm text-gray-500">
+                عرض الصفحة <span className="font-bold text-gray-700">{currentPage}</span> من أصل <span className="font-bold text-gray-700">{totalItems}</span> سجلات
+              </span>
+              <div className="flex items-center gap-2">
+                <button 
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  className="p-2 rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-30 transition-all shadow-sm"
+                >
+                  <span className="font-bold">السابق</span>
+                </button>
+
+                <div className="flex items-center gap-1">
+                  <span className="px-4 py-2 font-bold text-sm bg-[#003366] text-white rounded-lg shadow-sm">
+                    {currentPage} / {totalPages}
+                  </span>
+                </div>
+
+                <button 
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  className="p-2 rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-30 transition-all shadow-sm"
+                >
+                  <span className="font-bold">التالي</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
